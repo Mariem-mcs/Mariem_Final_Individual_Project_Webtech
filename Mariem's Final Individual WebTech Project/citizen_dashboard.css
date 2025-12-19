@@ -1,3 +1,312 @@
+/* Reset and Base Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f5f7fa;
+    color: #333;
+    line-height: 1.6;
+}
+
+/* Dashboard Container */
+.dashboard-container {
+    display: flex;
+    min-height: 100vh;
+}
+
+/* Sidebar Styles */
+.sidebar {
+    width: 250px;
+    background: linear-gradient(135deg, rgb(0, 98, 51) 0%, rgb(0, 77, 38) 100%);
+    color: white;
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    height: 100vh;
+    overflow-y: auto;
+}
+
+.logo {
+    padding: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.logo img {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+}
+
+.logo span {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: white;
+}
+
+.nav-menu {
+    flex: 1;
+    padding: 1.5rem 0;
+}
+
+.nav-item {
+    display: block;
+    padding: 1rem 1.5rem;
+    color: rgba(255, 255, 255, 0.8);
+    text-decoration: none;
+    transition: all 0.3s;
+    border-left: 4px solid transparent;
+}
+
+.nav-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    border-left-color: rgb(255, 198, 30);
+}
+
+.nav-item.active {
+    background: rgba(255, 255, 255, 0.15);
+    color: white;
+    border-left-color: rgb(255, 198, 30);
+}
+
+.sidebar-footer {
+    padding: 1.5rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.logout-btn {
+    display: block;
+    width: 100%;
+    padding: 0.75rem;
+    background: rgba(220, 53, 69, 0.9);
+    color: white;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 6px;
+    transition: all 0.3s;
+}
+
+.logout-btn:hover {
+    background: rgb(220, 53, 69);
+    transform: translateY(-2px);
+}
+
+/* Main Content */
+.main-content {
+    flex: 1;
+    margin-left: 250px;
+    padding: 2rem;
+    max-width: calc(100% - 250px);
+}
+
+/* Header */
+.header {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem 2rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.welcome h1 {
+    color: rgb(0, 98, 51);
+    margin-bottom: 0.5rem;
+    font-size: 1.8rem;
+}
+
+.welcome p {
+    color: rgb(100, 116, 139);
+    font-size: 1rem;
+}
+
+/* Messages */
+.success-message {
+    background: linear-gradient(135deg, rgb(39, 174, 96) 0%, #229954 100%);
+    color: white;
+    padding: 1rem 1.5rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+    animation: slideIn 0.3s ease;
+}
+
+.warning-message {
+    background: linear-gradient(135deg, rgb(241, 196, 15) 0%, rgb(243, 156, 18) 100%);
+    color: white;
+    padding: 1rem 1.5rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateY(-10px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* Dashboard Grid */
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+/* Card Styles */
+.card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 15px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+    transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.12);
+}
+
+.card-header {
+    background: linear-gradient(135deg, rgb(0, 98, 51) 0%, rgb(0, 77, 38) 100%);
+    color: white;
+    padding: 1.25rem 1.5rem;
+}
+
+.card-header h3 {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+.card-body {
+    padding: 1.5rem;
+}
+
+/* Info Card */
+.info-card .card-body {
+    padding: 1.5rem;
+}
+
+.info-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid rgb(241, 245, 249);
+}
+
+.info-item:last-child {
+    border-bottom: none;
+}
+
+.info-item .label {
+    color: rgb(100, 116, 139);
+    font-weight: 500;
+}
+
+.info-item .value {
+    color: rgb(30, 41, 59);
+    font-weight: 600;
+}
+
+/* Payment Card */
+.payment-card .card-body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+.amount-display {
+    text-align: center;
+    padding: 1.5rem;
+    background: rgb(248, 250, 252);
+    border-radius: 10px;
+    border: 2px solid rgb(226, 232, 240);
+    width: 100%;
+    margin-bottom: 1.5rem;
+}
+
+.amount-label {
+    color: rgb(100, 116, 139);
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+}
+
+.amount-value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: rgb(0, 98, 51);
+    margin-bottom: 0.5rem;
+}
+
+.amount-description {
+    color: rgb(71, 85, 105);
+    font-size: 1rem;
+}
+
+.transaction-id {
+    background: rgb(226, 232, 240);
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    display: inline-block;
+    margin-top: 1rem;
+    font-family: monospace;
+    font-size: 0.9rem;
+}
+
+.payment-amount-note {
+    color: rgb(100, 116, 139);
+    font-size: 0.9rem;
+    margin-top: 1rem;
+    text-align: center;
+}
+
+/* Actions Card */
+.actions-card .card-body {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+}
+
+.action-btn {
+    padding: 0.9rem 1rem;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-size: 0.95rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.action-btn.primary {
+    background: linear-gradient(135deg, rgb(59, 130, 246) 0%, rgb(29, 78, 216) 100%);
+    color: white;
+}
+
+.action-btn.secondary {
+    background: linear-gradient(135deg, rgb(39, 174, 96) 0%, #229954 100%);
+    color: white;
+}
+
+.action-btn.tertiary {
+    background: linear-gradient(135deg, rgb(156, 39, 176) 0%, rgb(142, 36, 170) 100%);
+    color: white;
+}
 
 .action-btn.payment {
     background: linear-gradient(135deg, rgb(39, 174, 96) 0%, #229954 100%);
@@ -5,12 +314,259 @@
     margin-top: 10px;
 }
 
+.action-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.action-btn.primary:hover {
+    background: linear-gradient(135deg, rgb(29, 78, 216) 0%, rgb(30, 64, 175) 100%);
+}
+
+.action-btn.secondary:hover {
+    background: linear-gradient(135deg, rgb(34, 153, 84) 0%, #1e8449 100%);
+}
+
+.action-btn.tertiary:hover {
+    background: linear-gradient(135deg, rgb(142, 36, 170) 0%, rgb(123, 36, 148) 100%);
+}
+
 .action-btn.payment:hover {
     background: linear-gradient(135deg, rgb(34, 153, 84) 0%, #1e8449 100%);
     transform: translateY(-2px);
 }
 
+/* Section Styles */
+.section {
+    margin-bottom: 2rem;
+}
 
+/* Table Styles */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+thead {
+    background: linear-gradient(135deg, rgb(0, 98, 51) 0%, rgb(0, 77, 38) 100%);
+    color: white;
+}
+
+thead th {
+    padding: 1rem;
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+tbody tr {
+    border-bottom: 1px solid rgb(241, 245, 249);
+}
+
+tbody tr:hover {
+    background: rgb(248, 250, 252);
+}
+
+tbody td {
+    padding: 1rem;
+    color: rgb(71, 85, 105);
+}
+
+/* Status Badges */
+.status-badge {
+    padding: 0.35rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    display: inline-block;
+}
+
+.status-pending {
+    background: rgba(241, 196, 15, 0.15);
+    color: rgb(146, 64, 14);
+}
+
+.status-under_review {
+    background: rgba(52, 152, 219, 0.15);
+    color: rgb(30, 64, 175);
+}
+
+.status-approved {
+    background: rgba(39, 174, 96, 0.15);
+    color: rgb(0, 98, 51);
+}
+
+.status-rejected {
+    background: rgba(231, 76, 60, 0.15);
+    color: rgb(185, 28, 28);
+}
+
+.status-verified {
+    background: rgba(39, 174, 96, 0.15);
+    color: rgb(0, 98, 51);
+}
+
+.status-not_verified {
+    background: rgba(241, 196, 15, 0.15);
+    color: rgb(146, 64, 14);
+}
+
+/* Buttons */
+.btn-track, .btn-upload, .btn-submit {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-size: 0.85rem;
+}
+
+.btn-track {
+    background: rgb(59, 130, 246);
+    color: white;
+}
+
+.btn-track:hover {
+    background: rgb(29, 78, 216);
+    transform: translateY(-2px);
+}
+
+.btn-upload {
+    background: linear-gradient(135deg, rgb(39, 174, 96) 0%, #229954 100%);
+    color: white;
+    padding: 0.75rem 1.5rem;
+    margin-top: 1rem;
+}
+
+.btn-upload:hover {
+    background: linear-gradient(135deg, rgb(34, 153, 84) 0%, #1e8449 100%);
+    transform: translateY(-2px);
+}
+
+.btn-submit {
+    background: linear-gradient(135deg, rgb(0, 98, 51) 0%, rgb(0, 77, 38) 100%);
+    color: white;
+    padding: 0.9rem 2rem;
+    font-size: 1rem;
+}
+
+.btn-submit:hover {
+    background: linear-gradient(135deg, rgb(0, 77, 38) 0%, rgb(0, 60, 30) 100%);
+    transform: translateY(-2px);
+}
+
+/* Form Styles */
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: rgb(30, 41, 59);
+    font-weight: 600;
+}
+
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border: 2px solid rgb(226, 232, 240);
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: border-color 0.3s;
+}
+
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: rgb(0, 98, 51);
+}
+
+.form-footer {
+    margin-top: 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.form-note {
+    color: rgb(100, 116, 139);
+    font-size: 0.9rem;
+}
+
+/* No Data Message */
+.no-data {
+    text-align: center;
+    padding: 2rem;
+    color: rgb(148, 163, 184);
+    font-style: italic;
+}
+
+.upload-section {
+    text-align: center;
+    margin-top: 1.5rem;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+    .sidebar {
+        width: 220px;
+    }
+    
+    .main-content {
+        margin-left: 220px;
+        max-width: calc(100% - 220px);
+    }
+}
+
+@media (max-width: 768px) {
+    .dashboard-container {
+        flex-direction: column;
+    }
+    
+    .sidebar {
+        width: 100%;
+        height: auto;
+        position: static;
+    }
+    
+    .main-content {
+        margin-left: 0;
+        max-width: 100%;
+        padding: 1rem;
+    }
+    
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .nav-menu {
+        display: flex;
+        flex-wrap: wrap;
+        padding: 1rem;
+    }
+    
+    .nav-item {
+        flex: 1;
+        min-width: 120px;
+        text-align: center;
+        border-left: none;
+        border-bottom: 4px solid transparent;
+    }
+    
+    .nav-item.active {
+        border-left: none;
+        border-bottom-color: rgb(255, 198, 30);
+    }
+}
+
+/* Modal Styles - Keep your existing modal CSS */
 .modal {
     display: none;
     position: fixed;
@@ -68,59 +624,25 @@
     overflow-y: auto;
 }
 
-
 .payment-info {
     display: flex;
     flex-direction: column;
     gap: 2rem;
 }
 
-.amount-display {
-    text-align: center;
-    padding: 1.5rem;
-    background: rgb(248, 250, 252);
-    border-radius: 10px;
-    border: 2px solid rgb(226, 232, 240);
-}
-
-.amount-label {
-    color: rgb(100, 116, 139);
-    font-size: 0.9rem;
-    margin-bottom: 0.5rem;
-}
-
-.amount-value {
-    font-size: 2.5rem;
-    font-weight: 700;
-    color: rgb(0, 98, 51);
-    margin-bottom: 0.5rem;
-}
-
-.amount-description {
-    color: rgb(71, 85, 105);
-    font-size: 1rem;
-}
-
-.transaction-id {
-    background: rgb(226, 232, 240);
-    padding: 0.5rem 1rem;
-    border-radius: 20px;
-    display: inline-block;
-    margin-top: 1rem;
-    font-family: monospace;
-    font-size: 0.9rem;
-}
 .providers-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 1rem;
     margin: 1rem 0;
 }
+
 @media (max-width: 768px) {
     .providers-grid {
         grid-template-columns: repeat(2, 1fr);
     }
 }
+
 .provider-option {
     background: white;
     border: 2px solid rgb(226, 232, 240);
@@ -167,7 +689,6 @@
     font-size: 0.9rem;
 }
 
-
 .payment-instructions {
     background: rgb(254, 243, 199);
     border-left: 4px solid rgb(245, 158, 11);
@@ -196,7 +717,6 @@
     font-family: monospace;
     color: rgb(146, 64, 14);
 }
-
 
 .receipt-upload {
     margin-top: 1rem;
@@ -266,7 +786,6 @@
     transform: translateY(-2px);
 }
 
-
 .payment-notes {
     background: rgb(241, 245, 249);
     padding: 1rem;
@@ -278,4 +797,34 @@
 
 .payment-notes p {
     margin-bottom: 0.5rem;
+}
+
+/* RTL Support */
+[dir="rtl"] .sidebar {
+    right: 0;
+    left: auto;
+}
+
+[dir="rtl"] .main-content {
+    margin-right: 250px;
+    margin-left: 0;
+}
+
+[dir="rtl"] .nav-item {
+    border-left: none;
+    border-right: 4px solid transparent;
+}
+
+[dir="rtl"] .nav-item.active {
+    border-right-color: rgb(255, 198, 30);
+}
+
+[dir="rtl"] .info-item {
+    flex-direction: row-reverse;
+}
+
+@media (max-width: 768px) and (dir="rtl") {
+    .main-content {
+        margin-right: 0;
+    }
 }

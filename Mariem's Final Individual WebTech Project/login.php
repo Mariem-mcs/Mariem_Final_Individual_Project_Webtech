@@ -1,32 +1,15 @@
 <?php
-// Enable error reporting at the VERY TOP
+// Enable error reporting
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
-ini_set('log_errors', 1);
 
-// Start session
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+// Include config FIRST (before any session start)
+require_once 'config.php';
 
-// Debug: Check if config.php exists
-if (!file_exists('config.php')) {
-    die("Error: config.php file not found!");
-}
+// Now start the secure session manually
+start_secure_session();
 
-// Include config with error handling
-try {
-    require_once 'config.php';
-} catch (Exception $e) {
-    die("Error loading config.php: " . $e->getMessage());
-}
-
-// Debug: Check database connection
-if (!$conn || $conn->connect_error) {
-    die("Database connection error: " . ($conn->connect_error ?? 'Unknown'));
-}
-
-// Check for logout
+// Handle logout
 if (isset($_GET['logout'])) {
     force_logout();
     header("Location: login.php");
@@ -47,16 +30,12 @@ if (is_logged_in()) {
 }
 
 // Language handling
+$lang = 'fr'; // Default
 if (isset($_GET['lang']) && in_array($_GET['lang'], ['fr', 'ar', 'en'])) {
     $lang = $_GET['lang'];
 } elseif (isset($_SESSION['language']) && in_array($_SESSION['language'], ['fr', 'ar', 'en'])) {
     $lang = $_SESSION['language'];
-} elseif (isset($_COOKIE['preferred_language']) && in_array($_COOKIE['preferred_language'], ['fr', 'ar', 'en'])) {
-    $lang = $_COOKIE['preferred_language'];
-} else {
-    $lang = 'fr'; // Default to French
 }
-
 $_SESSION['language'] = $lang;
 
 $translations = [
@@ -116,85 +95,69 @@ $translations = [
 $t = $translations[$lang] ?? $translations['fr'];
 $error = '';
 
-// Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Simple validation
     $email = trim($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
     
     if (empty($email) || empty($password)) {
         $error = $t['empty_fields'];
     } else {
-        try {
-            // Check if account is locked (simplified for now)
-            // is_account_locked function requires the failed_logins table
+        $email = sanitize_input($email);
+        
+        $stmt = $conn->prepare("SELECT id, full_name, email, password, user_type FROM users WHERE email = ?");
+        $stmt->bind_param("s", $email);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        
+        if ($result->num_rows === 1) {
+            $user = $result->fetch_assoc();
             
-            // Check user in database
-            $stmt = $conn->prepare("SELECT id, full_name, email, password, user_type FROM users WHERE email = ?");
-            
-            if (!$stmt) {
-                $error = "Database error: " . $conn->error;
-            } else {
-                $stmt->bind_param("s", $email);
-                $stmt->execute();
-                $result = $stmt->get_result();
-                
-                if ($result->num_rows === 1) {
-                    $user = $result->fetch_assoc();
-                    
-                    // Verify password
-                    if (password_verify($password, $user['password'])) {
-                        // Check for admin
-                        if ($user['user_type'] === 'admin') {
-                            if (!is_valid_admin_email($user['email'])) {
-                                $error = $t['admin_access_denied'];
-                            } else {
-                                // Admin login successful
-                                $_SESSION['user_id'] = $user['id'];
-                                $_SESSION['user_email'] = $user['email'];
-                                $_SESSION['full_name'] = $user['full_name'];
-                                $_SESSION['user_type'] = 'admin';
-                                $_SESSION['language'] = $lang;
-                                $_SESSION['LAST_ACTIVITY'] = time();
-                                
-                                // Try to log activity (ignore if table doesn't exist)
-                                @log_activity($user['id'], 'login', 'Admin logged in');
-                                
-                                header("Location: admin_dashboard.php");
-                                exit();
-                            }
-                        } else {
-                            // Regular user login
-                            $_SESSION['user_id'] = $user['id'];
-                            $_SESSION['user_email'] = $user['email'];
-                            $_SESSION['full_name'] = $user['full_name'];
-                            $_SESSION['user_type'] = $user['user_type'];
-                            $_SESSION['language'] = $lang;
-                            $_SESSION['LAST_ACTIVITY'] = time();
-                            
-                            // Try to log activity
-                            @log_activity($user['id'], 'login', 'User logged in');
-                            
-                            if ($user['user_type'] === 'citizen') {
-                                header("Location: citizen_dashboard.php");
-                            } else {
-                                header("Location: noncitizen_dashboard.php");
-                            }
-                            exit();
-                        }
+            if (password_verify($password, $user['password'])) {
+                if ($user['user_type'] === 'admin') {
+                    if (!is_valid_admin_email($user['email'])) {
+                        $error = $t['admin_access_denied'];
+                        log_failed_login($email);
+                        log_security_event('admin_access_denied', "Non-admin email tried to login as admin: $email");
                     } else {
-                        $error = $t['invalid_credentials'];
-                        @log_failed_login($email);
+                        // Admin login successful
+                        $_SESSION['user_id'] = $user['id'];
+                        $_SESSION['user_email'] = $user['email'];
+                        $_SESSION['full_name'] = $user['full_name'];
+                        $_SESSION['user_type'] = 'admin';
+                        $_SESSION['language'] = $lang;
+                        $_SESSION['LAST_ACTIVITY'] = time();
+                        
+                        log_activity($user['id'], 'login', 'Admin logged in');
+                        header("Location: admin_dashboard.php");
+                        exit();
                     }
                 } else {
-                    $error = $t['invalid_credentials'];
-                    @log_failed_login($email);
+                    // Regular user login
+                    $_SESSION['user_id'] = $user['id'];
+                    $_SESSION['user_email'] = $user['email'];
+                    $_SESSION['full_name'] = $user['full_name'];
+                    $_SESSION['user_type'] = $user['user_type'];
+                    $_SESSION['language'] = $lang;
+                    $_SESSION['LAST_ACTIVITY'] = time();
+                    
+                    log_activity($user['id'], 'login', 'User logged in');
+                    
+                    if ($user['user_type'] === 'citizen') {
+                        header("Location: citizen_dashboard.php");
+                    } else {
+                        header("Location: noncitizen_dashboard.php");
+                    }
+                    exit();
                 }
-                $stmt->close();
+            } else {
+                $error = $t['invalid_credentials'];
+                log_failed_login($email);
             }
-        } catch (Exception $e) {
-            $error = "System error: " . $e->getMessage();
+        } else {
+            $error = $t['invalid_credentials'];
+            log_failed_login($email);
         }
+        $stmt->close();
     }
 }
 

@@ -1,25 +1,65 @@
 <?php
+// Enable ALL errors
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
+// Start session
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// Include config
 require_once 'config.php';
-if (!is_logged_in() || $_SESSION['user_type'] !== 'non_citizen') {
-    header("Location: login.php");  
-    exit();                          
+
+// DEBUG: Show session info (remove after fixing)
+echo "<!-- DEBUG: Session user_type = " . ($_SESSION['user_type'] ?? 'NOT SET') . " -->\n";
+echo "<!-- DEBUG: is_logged_in() = " . (is_logged_in() ? 'TRUE' : 'FALSE') . " -->\n";
+
+// Simple check - remove complex conditions temporarily
+if (!isset($_SESSION['user_id'])) {
+    header("Location: login.php");
+    exit();
+}
+
+// Check user type - accept either 'noncitizen' or 'non_citizen'
+$user_type = $_SESSION['user_type'] ?? '';
+if ($user_type !== 'noncitizen' && $user_type !== 'non_citizen') {
+    // Not a noncitizen, redirect to appropriate dashboard or login
+    if ($user_type === 'citizen') {
+        header("Location: citizen_dashboard.php");
+    } elseif ($user_type === 'admin') {
+        header("Location: admin_dashboard.php");
+    } else {
+        header("Location: login.php");
+    }
+    exit();
 }
 
 $user_id = $_SESSION['user_id'];
+
+// Language handling
 if (isset($_GET['lang']) && in_array($_GET['lang'], ['fr', 'ar', 'en'])) {
     $_SESSION['language'] = $_GET['lang'];
     header("Location: noncitizen_dashboard.php");
     exit();
 }
 $lang = $_SESSION['language'] ?? 'fr';
+
+// Get user data
 $stmt = $conn->prepare("SELECT * FROM users WHERE id = ?");
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
 $user = $stmt->get_result()->fetch_assoc();
+$stmt->close();
+
+// Check if user exists
+if (!$user) {
+    session_destroy();
+    header("Location: login.php");
+    exit();
+}
+
+// Rest of your code continues...
 $payment_amount = 45000; // Default for other countries
 if (strtolower($user['nationality']) === 'senegal' || strtolower($user['nationality']) === 'sénégalaise') {
     $payment_amount = 1500;
@@ -685,3 +725,4 @@ $has_active_permit = ($permit && $permit['status'] === 'active');
 </html>
 
 [file content end]
+

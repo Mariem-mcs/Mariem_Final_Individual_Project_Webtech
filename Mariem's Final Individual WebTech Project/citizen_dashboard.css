@@ -621,4 +621,161 @@ body {
 
 .selected-provider {
     background: rgb(240, 249, 255);
-    border-left: 4px solid rgb(59, 130,
+    border-left: 4px solid rgb(59, 130, 246);
+    padding: 1rem;
+    border-radius: 8px;
+    margin-top: 1rem;
+}
+
+.provider-number {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: rgb(30, 64, 175);
+    margin: 0.5rem 0;
+    font-family: monospace;
+}
+
+.provider-instruction {
+    color: rgb(100, 116, 139);
+    font-size: 0.9rem;
+}
+
+.payment-instructions {
+    background: rgb(254, 243, 199);
+    border-left: 4px solid rgb(245, 158, 11);
+    padding: 1.5rem;
+    border-radius: 8px;
+}
+
+.payment-instructions h4 {
+    color: rgb(146, 64, 14);
+    margin-bottom: 1rem;
+}
+
+.payment-instructions ol {
+    margin-left: 1.5rem;
+    color: rgb(146, 64, 14);
+}
+
+.payment-instructions li {
+    margin-bottom: 0.5rem;
+}
+
+.payment-instructions code {
+    background: rgb(254, 243, 199);
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-family: monospace;
+    color: rgb(146, 64, 14);
+}
+
+.receipt-upload {
+    margin-top: 1rem;
+}
+
+.file-upload-area {
+    margin: 1rem 0;
+}
+
+.file-upload-area input[type="file"] {
+    display: none;
+}
+
+.file-label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    background: rgb(248, 250, 252);
+    border: 2px dashed rgb(203, 213, 225);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s;
+    text-align: center;
+}
+
+.file-label:hover {
+    background: rgb(241, 245, 249);
+    border-color: rgb(148, 163, 184);
+}
+
+.upload-text {
+    font-weight: 600;
+    color: rgb(71, 85, 105);
+    margin-bottom: 0.5rem;
+}
+
+.file-size {
+    color: rgb(148, 163, 184);
+    font-size: 0.9rem;
+}
+
+#fileName {
+    margin-top: 0.5rem;
+    color: rgb(59, 130, 246);
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.btn-upload-receipt {
+    width: 100%;
+    padding: 1rem;
+    background: rgb(0, 98, 51);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    margin-top: 1rem;
+}
+
+.btn-upload-receipt:hover {
+    background: rgb(0, 77, 38);
+    transform: translateY(-2px);
+}
+
+.payment-notes {
+    background: rgb(241, 245, 249);
+    padding: 1rem;
+    border-radius: 8px;
+    border-left: 4px solid rgb(100, 116, 139);
+    font-size: 0.9rem;
+    color: rgb(71, 85, 105);
+}
+
+.payment-notes p {
+    margin-bottom: 0.5rem;
+}
+
+/* RTL Support */
+[dir="rtl"] .sidebar {
+    right: 0;
+    left: auto;
+}
+
+[dir="rtl"] .main-content {
+    margin-right: 250px;
+    margin-left: 0;
+}
+
+[dir="rtl"] .nav-item {
+    border-left: none;
+    border-right: 4px solid transparent;
+}
+
+[dir="rtl"] .nav-item.active {
+    border-right-color: rgb(255, 198, 30);
+}
+
+[dir="rtl"] .info-item {
+    flex-direction: row-reverse;
+}
+
+@media (max-width: 768px) and (dir="rtl") {
+    .main-content {
+        margin-right: 0;
+    }
+}

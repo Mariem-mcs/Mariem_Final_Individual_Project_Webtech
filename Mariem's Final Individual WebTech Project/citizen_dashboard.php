@@ -9,17 +9,7 @@ require_once 'config.php';
 // Start session using your config function
 start_secure_session();
 
-// Check if user is logged in
-if (!is_logged_in()) {
-    header("Location: login.php");
-    exit();
-}
-
-
-// Start session using your config function
-start_secure_session();
-
-// Check if user is logged in
+// Check if user is logged in - FIXED: Use header() instead of redirect()
 if (!is_logged_in()) {
     header("Location: login.php");
     exit();
@@ -29,23 +19,26 @@ if (!is_logged_in()) {
 $user_type = $_SESSION['user_type'] ?? '';
 $normalized_user_type = strtolower(str_replace([' ', '_'], '', $user_type));
 
-// If not noncitizen, redirect to appropriate page
+// If not noncitizen, redirect to appropriate page - FIXED: Use header() instead of redirect()
 if ($normalized_user_type !== 'noncitizen') {
     if ($normalized_user_type === 'citizen') {
         header("Location: citizen_dashboard.php");
+        exit();
     } elseif ($normalized_user_type === 'admin') {
         header("Location: admin_dashboard.php");
+        exit();
     } else {
+        // Invalid user_type, go to login
         header("Location: login.php");
+        exit();
     }
-    exit();
 }
-
-$user_id = $_SESSION['user_id'];
 
 // Handle document upload
 $upload_message = '';
 $upload_success = false;
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_document'])) {
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_document'])) {
     $document_type = $_POST['document_type'] ?? '';
     $allowed_types = ['passport', 'photo', 'proof_of_address', 'police_certificate'];
@@ -628,4 +621,5 @@ $dir = $lang === 'ar' ? 'rtl' : 'ltr';
     <script src="noncitizen_dashboard.js"></script>
 </body>
 </html>
+
 

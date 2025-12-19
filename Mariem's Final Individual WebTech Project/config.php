@@ -1,6 +1,6 @@
 <?php
 $host = 'localhost';
-$user = 'root';
+$user = 'mariem.sall';
 $pass = 'NewStrongPass123!';  
 $db = 'webtech_2025A_mariem_sall';
 
@@ -326,3 +326,4 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 ?>
+

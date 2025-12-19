@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IDTrack Mauritania | Plateforme Nationale d'Identification</title>
+    <link rel="stylesheet" href="index.css">
+</head>
+<body>
+    <!-- The Language Selection affichage: -->
+    <div id="languageScreen" class="language-selection">
+        <div class="language-container">
+            <img src="authentifactionAuthorizer.png" alt="authentifactionAuthorizer" class="emblem">
+            
+            <h1>Islamic Republic of Mauritania</h1>
+            <p>Sélectionnez votre langue / اختر لغتك / Select your language</p>
+            
+            <div class="language-grid">
+                <button class="language-btn" onclick="selectLanguage('fr')" aria-label="Français">
+                    <div class="flag-icon">🇫🇷</div>
+                    <h3>Français</h3>
+                    <p>French</p>
+                </button>
+                
+                <button class="language-btn" onclick="selectLanguage('ar')" aria-label="العربية">
+                    <div class="flag-icon">AR</div>
+                    <h3>العربية</h3>
+                    <p>Arabic</p>
+                </button>
+                
+                <button class="language-btn" onclick="selectLanguage('en')" aria-label="English">
+                    <div class="flag-icon">ENG</div>
+                    <h3>English</h3>
+                    <p>English</p>
+                </button>
+            </div>
+            
+            <div class="copyright">
+                <p>&copy; 2025 Direction Générale de la Sûreté Nationale</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- The Main Application:  It will be Hidden until a language is selected: -->
+    <div id="mainApp" class="hidden">
+        <!-- The Announcement Bar:-->
+        <div class="announcement-bar">
+            <div class="container">
+                <p>
+                    <i class="fa fa-bullhorn"></i>
+                    <span class="announcement-text" data-fr="Nouveau : Système 100% Digital - Découvrez les avantages" 
+                          data-ar="جديد: نظام رقمي 100٪ - اكتشف المزايا" 
+                          data-en="New: 100% Digital System - Discover the benefits"></span>
+                </p>
+            </div>
+        </div>
+
+        <!-- The Header:where the main navigation are-->
+        <header class="main-header">
+            <nav class="navbar">
+                <div class="container navbar-content">
+                    <a href="#" class="logo">
+                        <img src="authentifactionAuthorizer.png" alt="Logo" class="logo-img">
+                        <span>IDTrack</span>
+                    </a>
+                    <ul class="nav-menu" id="navMenu">
+                        <li><a href="#home" data-fr="Accueil" data-ar="الرئيسية" data-en="Home">Home</a></li>
+                        <li><a href="#features" data-fr="Fonctionnalités" data-ar="المميزات" data-en="Features">Features</a></li>
+                        <li><a href="#how-it-works" data-fr="Comment ça marche" data-ar="كيف يعمل" data-en="How it works">How it works</a></li>
+                        <li><a href="#contact" data-fr="Contact" data-ar="اتصل بنا" data-en="Contact">Contact</a></li>
+                        <li><a href="login.php" class="btn-login" data-fr="Connexion" data-ar="تسجيل الدخول" data-en="Login">Login</a></li>
+                        <li><a href="register.php" class="btn-register" data-fr="S'inscrire" data-ar="التسجيل" data-en="Register">Register</a></li>
+                        <li class="language-switcher">
+                            <button onclick="toggleLanguageMenu()" class="current-lang">
+                                <i class="fa fa-globe"></i>
+                                <span id="currentLang">FR</span>
+                            </button>
+                            <div class="language-dropdown" id="langDropdown">
+                                <a href="#" onclick="changeLanguage('fr')"><i class="fa fa-flag"></i> Français</a>
+                                <a href="#" onclick="changeLanguage('ar')"><i class="fa fa-language"></i> العربية</a>
+                                <a href="#" onclick="changeLanguage('en')"><i class="fa fa-flag-checkered"></i> English</a>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+        </header>
+
+        <!-- The Hero Section:  -->
+        <section class="hero" id="home">
+            <div class="container hero-container">
+                <div class="hero-content">
+                    <h1 class="hero-title" data-fr="Votre Identité Nationale Digitalisée" 
+                        data-ar="هويتك الوطنية الرقمية" 
+                        data-en="Your National Identity Digitalized">
+                        Your National Identity Digitalized
+                    </h1>
+                    <p class="hero-subtitle" data-fr="Plateforme sécurisée pour la gestion de votre carte d'identité nationale. Rapide, simple et 100% en ligne." 
+                       data-ar="منصة آمنة لإدارة بطاقة الهوية الوطنية الخاصة بك. سريع وبسيط و 100٪ عبر الإنترنت." 
+                       data-en="Secure platform for managing your national ID card. Fast, simple and 100% online.">
+                        Secure platform for managing your national ID card. Fast, simple and 100% online.
+                    </p>
+                    <div class="hero-buttons">
+                        <a href="#" class="btn-primary" onclick="showRegister()" data-fr="Demander une carte" data-ar="طلب بطاقة" data-en="Apply for ID">Apply for ID</a>
+                        <a href="#how-it-works" class="btn-secondary" data-fr="Comment ça marche" data-ar="كيف يعمل" data-en="How it works">How it works</a>
+                    </div>
+                    <div class="hero-stats">
+                        <div class="stat-item">
+                            <h3>3</h3>
+                            <p data-fr="Cartes émises" data-ar="بطاقات صادرة" data-en="IDs issued">IDs issued</p>
+                        </div>
+                        <div class="stat-item">
+                            <h3>24/7</h3>
+                            <p data-fr="Support disponible" data-ar="دعم متاح" data-en="Support available">Support</p>
+                        </div>
+                        <div class="stat-item">
+                            <h3>100%</h3>
+                            <p data-fr="Sécurisé" data-ar="آمن" data-en="Secure">Secure</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="hero-image">
+                    <div class="id-card-showcase">
+                        <img src="201803mena_mauritania_school3.webp" alt="Mauritanian ID Card" class="floating-card">
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- The Features Section: where the main features of the platform are showcased: -->
+        <section class="features" id="features">
+            <div class="container">
+                <h2 class="section-title" data-fr="Nos Fonctionnalités" data-ar="ميزاتنا" data-en="Our Features">Our Features</h2>
+                <p class="section-subtitle" data-fr="Une plateforme moderne pour vos besoins d'identification" 
+                   data-ar="منصة حديثة لاحتياجات التعريف الخاصة بك" 
+                   data-en="A modern platform for your identification needs">
+                    A modern platform for your identification needs
+                </p>
+                
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fa fa-bolt"></i>
+                        </div>
+                        <h3 data-fr="Traitement Rapide" data-ar="معالجة سريعة" data-en="Fast Processing">Fast Processing</h3>
+                        <p data-fr="Obtenez votre carte sans perdre votre temps et énergie" 
+                           data-ar="احصل على بطاقة هويتك دون إضاعة وقتك وطاقتك" 
+                           data-en="Get your card without wasting your time and energy">
+                            Get your card without wasting your time and energy
+                        </p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fa fa-shield"></i>
+                        </div>
+                        <h3 data-fr="Sécurité Maximale" data-ar="أقصى أمان" data-en="Maximum Security">Maximum Security</h3>
+                        <p data-fr="Données cryptées avec les standards internationaux les plus élevés" 
+                           data-ar="بيانات مشفرة بأعلى المعايير الدولية" 
+                           data-en="Data encrypted with the highest international standards">
+                            Data encrypted with the highest international standards
+                        </p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fa fa-map-marker"></i>
+                        </div>
+                        <h3 data-fr="Suivi en Temps Réel" data-ar="تتبع في الوقت الفعلي" data-en="Real-time Tracking">Real-time Tracking</h3>
+                        <p data-fr="Suivez l'état de votre demande à chaque étape du processus" 
+                           data-ar="تتبع حالة طلبك في كل مرحلة من العملية" 
+                           data-en="Track your application status at every stage">
+                            Track your application status at every stage
+                        </p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h3 data-fr="Documents Numériques" data-ar="وثائق رقمية" data-en="Digital Documents">Digital Documents</h3>
+                        <p data-fr="Téléchargez et partagez vos documents de manière sécurisée" 
+                           data-ar="قم بتنزيل ومشاركة مستنداتك بشكل آمن" 
+                           data-en="Download and share your documents securely">
+                            Download and share your documents securely
+                        </p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h3 data-fr="Support 24/7" data-ar="دعم 24/7" data-en="24/7 Support">24/7 Support</h3>
+                        <p data-fr="Une équipe dédiée pour vous assister à tout moment" 
+                           data-ar="فريق مخصص لمساعدتك في أي وقت" 
+                           data-en="A dedicated team to assist you at any time">
+                            A dedicated team to assist you at any time
+                        </p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h3 data-fr="Multilingue" data-ar="متعدد اللغات" data-en="Multilingual">Multilingual</h3>
+                        <p data-fr="Disponible en Français, Arabe et Anglais" 
+                           data-ar="متاح بالفرنسية والعربية والإنجليزية" 
+                           data-en="Available in French, Arabic and English">
+                            Available in French, Arabic and English
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- How It Works Section -->
+        <section class="how-it-works" id="how-it-works">
+            <div class="container">
+                <h2 class="section-title" data-fr="Comment Ça Marche" data-ar="كيف يعمل" data-en="How It Works">How It Works</h2>
+                <p class="section-subtitle" data-fr="Obtenez votre carte d'identité en 4 étapes simples" 
+                   data-ar="احصل على بطاقة الهوية الخاصة بك في 4 خطوات بسيطة" 
+                   data-en="Get your ID card in 4 simple steps">
+                    Get your ID card in 4 simple steps
+                </p>
+                
+                <div class="steps-container">
+                    <div class="step">
+                        <div class="step-number">1</div>
+                        <h3 data-fr="Créer un Compte" data-ar="إنشاء حساب" data-en="Create Account">Create Account</h3>
+                        <p data-fr="Inscrivez-vous avec votre email et vos informations de base" 
+                           data-ar="سجل باستخدام بريدك الإلكتروني ومعلوماتك الأساسية" 
+                           data-en="Sign up with your email and basic information">
+                            Sign up with your email and basic information
+                        </p>
+                    </div>
+                    
+                    <div class="step">
+                        <div class="step-number">2</div>
+                        <h3 data-fr="Soumettre Documents" data-ar="تقديم المستندات" data-en="Submit Documents">Submit Documents</h3>
+                        <p data-fr="Téléchargez les documents requis en ligne" 
+                           data-ar="قم بتحميل المستندات المطلوبة عبر الإنترنت" 
+                           data-en="Upload the required documents online">
+                            Upload the required documents online
+                        </p>
+                    </div>
+                    
+                    <div class="step">
+                        <div class="step-number">3</div>
+                        <h3 data-fr="Vérification" data-ar="التحقق" data-en="Verification">Verification</h3>
+                        <p data-fr="Nos agents vérifient vos documents sous 94h" 
+                           data-ar="يقوم وكلاؤنا بالتحقق من مستنداتك في غضون 94 ساعة" 
+                           data-en="Our agents verify your documents within 94h">
+                            Our agents verify your documents within 94h
+                        </p>
+                    </div>
+                    
+                    <div class="step">
+                        <div class="step-number">4</div>
+                        <h3 data-fr="Recevoir Carte" data-ar="استلام البطاقة" data-en="Receive Card">Receive Card</h3>
+                        <p data-fr="Récupérez votre carte au centre le plus proche" 
+                           data-ar="استلم بطاقتك في أقرب مركز" 
+                           data-en="Collect your card at the nearest center">
+                            Collect your card at the nearest center
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- The Contact Section: where i put my contact, email, and my social media links: -->
+        <section class="contact-section" id="contact">
+            <div class="container">
+                <div class="contact-grid">
+                    <div class="contact-info">
+                        <h2 data-fr="Contactez-nous" data-ar="اتصل بنا" data-en="Contact Us">Contact Us</h2>
+                        <p data-fr="Notre équipe est disponible pour répondre à toutes vos questions" 
+                           data-ar="فريقنا متاح للإجابة على جميع أسئلتك" 
+                           data-en="Our team is available to answer all your questions">
+                            Our team is available to answer all your questions
+                        </p>
+                        
+                        <div class="contact-item">
+                                <h4 data-fr="Centre d'Appels" data-ar="مركز الاتصال" data-en="Call Center">Call Center</h4>
+                                <p>32423440</p>
+                        </div>
+                        
+                        <div class="contact-item">
+                                <h4 data-fr="Email" data-ar="البريد الإلكتروني" data-en="Email">Email</h4>
+                                <p>mariem.sall@ashesi.edu.gh</p>
+                        </div>
+                        
+                        <div class="contact-item">
+                                <h4 data-fr="Adresse" data-ar="العنوان" data-en="Address">Address</h4>
+                                <p>Direction Générale de la Sûreté Nationale<br>Nouakchott, Mauritanie</p>
+                        </div>
+                        
+                        <div class="contact-item">
+                                <h4 data-fr="Heures d'ouverture" data-ar="ساعات العمل" data-en="Working Hours">Working Hours</h4>
+                                <p data-fr="Lun - Ven: 8h - 16h" data-ar="الإثنين - الجمعة: 8 ص - 4 م" data-en="Mon - Fri: 8am - 4pm">Mon - Fri: 8am - 4pm</p>
+                        </div>
+                    </div>
+                    
+                    <div class="contact-form-container">
+                        <form class="contact-form" onsubmit="handleContactForm(event)">
+                            <div class="form-group">
+                                <label data-fr="Nom complet" data-ar="الاسم الكامل" data-en="Full Name">Full Name</label>
+                                <input type="text" class="form-control" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label data-fr="Email" data-ar="البريد الإلكتروني" data-en="Email">Email</label>
+                                <input type="email" class="form-control" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label data-fr="Sujet" data-ar="الموضوع" data-en="Subject">Subject</label>
+                                <input type="text" class="form-control" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label data-fr="Message" data-ar="رسالة" data-en="Message">Message</label>
+                                <textarea class="form-control" rows="4" required></textarea>
+                            </div>
+                            
+                            <button type="submit" class="btn-primary btn-block" data-fr="Envoyer Message" data-ar="إرسال رسالة" data-en="Send Message">
+                                 Send Message
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- The Footer Section: contains information about the platform, quick links, legal information, and social media follow options:-->
+        <footer class="footer">
+            <div class="container">
+                <div class="footer-content">
+                    <div class="footer-section">
+                        <h3><i class="fa fa-id-card"></i> IDTrack Mauritania</h3>
+                        <p data-fr="Plateforme officielle de gestion des cartes d'identité nationale de la République Islamique de Mauritanie." 
+                           data-ar="المنصة الرسمية لإدارة بطاقات الهوية الوطنية لجمهورية موريتانيا الإسلامية." 
+                           data-en="Official platform for managing national ID cards of the Islamic Republic of Mauritania.">
+                            Official platform for managing national ID cards of the Islamic Republic of Mauritania.
+                        </p>
+                    </div>
+                    
+                    <div class="footer-section">
+                        <h3><i class="fa fa-link"></i> <span data-fr="Liens Rapides" data-ar="روابط سريعة" data-en="Quick Links">Quick Links</span></h3>
+                        <ul>
+                            <li><a href="#home"> <span data-fr="Accueil" data-ar="الرئيسية" data-en="Home">Home</span></a></li>
+                            <li><a href="#features"><span data-fr="Fonctionnalités" data-ar="المميزات" data-en="Features">Features</span></a></li>
+                            <li><a href="#how-it-works"><span data-fr="Comment ça marche" data-ar="كيف يعمل" data-en="How it works">How it works</span></a></li>
+                            <li><a href="#contact"><span data-fr="Contact" data-ar="اتصل بنا" data-en="Contact">Contact</span></a></li>
+                        </ul>
+                    </div>
+                    
+                    <div class="footer-section">
+                        <h3><span data-fr="Légal" data-ar="قانوني" data-en="Legal">Legal</span></h3>
+                        <ul>
+                            <li><a href="#"><span data-fr="Conditions d'utilisation" data-ar="شروط الاستخدام" data-en="Terms of Service">Terms</span></a></li>
+                            <li><a href="#"><span data-fr="Politique de confidentialité" data-ar="سياسة الخصوصية" data-en="Privacy Policy">Privacy</span></a></li>
+                            <li><a href="#"><span data-fr="Mentions légales" data-ar="إشعارات قانونية" data-en="Legal Notice">Legal</span></a></li>
+                        </ul>
+                    </div>
+                    
+                    <div class="footer-section">
+                        <h3><i class="fa fa-users"></i> <span data-fr="Suivez-nous" data-ar="تابعنا" data-en="Follow Us">Follow Us</span></h3>
+                        <div class="social-links">
+                            <a href="http://www.tiktok.com/@miya_sall02" aria-label="TikTok" target="_blank"><img src="logo_Images/tiktokLogo.jpg" alt="TikTok Logo" class="tiktokLogo"></a>
+                            <a href="https://www.linkedin.com/in/mariem-sall" aria-label="LinkedIn" target="_blank"><img src="logo_Images\linkedinLogo.png" alt="LinkedIn Logo" class="linkedinLogo"></a>
+                            <a href="https://www.instagram.com/mariemciresall" aria-label="Instagram" target="_blank"><img src="logo_Images/instagram-logo_1199-122.avif" alt="Instagram Logo" class="instagramLogo"></a>
+                    </div>
+                </div>
+
+                
+                <div class="footer-bottom">
+                    <p><i class="fa fa-copyright"></i> 2025 IDTrack Mauritania - Direction Générale de la Sûreté Nationale. <span data-fr="Tous droits réservés" data-ar="كل الحقوق محفوظة" data-en="All rights reserved">All rights reserved</span>.</p>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <script src="index.js"></script>
+</body>
+</html>

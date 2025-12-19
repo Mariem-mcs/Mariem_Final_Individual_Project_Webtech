@@ -15,6 +15,16 @@ if (!is_logged_in()) {
     exit();
 }
 
+
+// Start session using your config function
+start_secure_session();
+
+// Check if user is logged in
+if (!is_logged_in()) {
+    header("Location: login.php");
+    exit();
+}
+
 // Check user type - normalize different formats
 $user_type = $_SESSION['user_type'] ?? '';
 $normalized_user_type = strtolower(str_replace([' ', '_'], '', $user_type));
@@ -618,3 +628,4 @@ $dir = $lang === 'ar' ? 'rtl' : 'ltr';
     <script src="noncitizen_dashboard.js"></script>
 </body>
 </html>
+

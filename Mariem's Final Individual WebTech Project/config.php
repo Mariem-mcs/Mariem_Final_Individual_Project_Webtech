@@ -25,11 +25,10 @@ define('ADMIN_EMAILS', [
 header("X-Frame-Options: DENY");
 header("X-Content-Type-Options: nosniff");
 
-// SIMPLIFIED SESSION FUNCTIONS - NO AUTOMATIC REDIRECTS
+// SIMPLIFIED SESSION FUNCTIONS
 function start_secure_session() {
     if (session_status() === PHP_SESSION_NONE) {
         session_name(SESSION_NAME);
-        // Simple session start - no complex params
         session_start();
     }
 }
@@ -43,10 +42,25 @@ function force_logout($redirect_to_login = false) {
 }
 
 function is_logged_in() {
-    // SIMPLIFIED: Just check if user_id exists
-    return isset($_SESSION['user_id']) && !empty($_SESSION['user_id']);
+    // Check if session is active
+    if (session_status() !== PHP_SESSION_ACTIVE) {
+        return false;
+    }
+    
+    // Check if user_id exists and is not empty
+    if (!isset($_SESSION['user_id']) || empty($_SESSION['user_id'])) {
+        return false;
+    }
+    
+    // Check if user_type exists (optional but good to have)
+    if (!isset($_SESSION['user_type']) || empty($_SESSION['user_type'])) {
+        return false;
+    }
+    
+    return true;
 }
 
+// Keep other functions but simplify
 function sanitize_input($data) {
     return htmlspecialchars(stripslashes(trim($data)));
 }
@@ -55,17 +69,20 @@ function is_valid_admin_email($email) {
     return in_array($email, ADMIN_EMAILS);
 }
 
-// TEMPORARILY DISABLE logging functions
+// Comment out or simplify complex logging functions for now
 function log_activity($user_id, $action, $description) {
-    return true; // Do nothing for now
+    // Temporarily do nothing
+    return true;
 }
 
 function log_security_event($event_type, $description) {
-    return true; // Do nothing for now
+    // Temporarily do nothing
+    return true;
 }
 
 function log_failed_login($email) {
-    return true; // Do nothing for now
+    // Temporarily do nothing
+    return true;
 }
 
 // Error reporting

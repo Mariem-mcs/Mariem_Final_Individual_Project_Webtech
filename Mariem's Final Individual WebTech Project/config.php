@@ -1,8 +1,8 @@
 <?php
 $host = 'localhost';
 $user = 'root';
-$pass = '';  
-$db = 'idtrack_mauritania';
+$pass = 'NewStrongPass123!';  
+$db = 'webtech_2025A_mariem_sall';
 
 $conn = new mysqli($host, $user, $pass, $db);
 
@@ -324,4 +324,5 @@ start_secure_session();
 // Error reporting (disable in production)
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
+
 ?>

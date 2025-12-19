@@ -1,4 +1,3 @@
-
 <?php
 // Enable error reporting
 error_reporting(E_ALL);
@@ -83,7 +82,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// The Language translations section:
+// The Language translations section with added no_documents key:
 $translations = [
     'en' => [
         'dashboard' => 'Dashboard',
@@ -105,6 +104,7 @@ $translations = [
         'apply_replacement' => 'Request Replacement',
         'apply_renewal' => 'Renew ID Card',
         'no_applications' => 'No applications yet',
+        'no_documents' => 'No documents uploaded yet', // ADDED THIS
         'application_id' => 'Application ID',
         'type' => 'Type',
         'status' => 'Status',
@@ -135,7 +135,8 @@ $translations = [
         'renewal_fee' => 'Renewal/Replacement Fee: ',
         'payment_amount' => '3,000 MRU',
         'payment_description' => 'For ID card renewal or replacement',
-        'payment_note' => 'Pay via mobile money (Bankily, Masrivi, Sadad, etc.)'
+        'payment_note' => 'Pay via mobile money (Bankily, Masrivi, Sadad, etc.)',
+        'form_note' => 'After submission, you will need to upload required documents.' // ADDED THIS
     ],
     'fr' => [
         'dashboard' => 'Tableau de bord',
@@ -157,6 +158,7 @@ $translations = [
         'apply_replacement' => 'Demander remplacement',
         'apply_renewal' => 'Renouveler carte',
         'no_applications' => 'Aucune demande',
+        'no_documents' => 'Aucun document téléchargé', // ADDED THIS
         'application_id' => 'N° de demande',
         'type' => 'Type',
         'status' => 'Statut',
@@ -187,7 +189,8 @@ $translations = [
         'renewal_fee' => 'Frais renouvellement/remplacement: ',
         'payment_amount' => '3 000 MRU',
         'payment_description' => 'Pour renouvellement ou remplacement de carte',
-        'payment_note' => 'Payer via mobile money (Bankily, Masrivi, Sadad, etc.)'
+        'payment_note' => 'Payer via mobile money (Bankily, Masrivi, Sadad, etc.)',
+        'form_note' => 'Après soumission, vous devrez télécharger les documents requis.' // ADDED THIS
     ],
     'ar' => [
         'dashboard' => 'لوحة التحكم',
@@ -209,6 +212,7 @@ $translations = [
         'apply_replacement' => 'طلب استبدال',
         'apply_renewal' => 'تجديد البطاقة',
         'no_applications' => 'لا توجد طلبات',
+        'no_documents' => 'لا توجد مستندات', // ADDED THIS
         'application_id' => 'رقم الطلب',
         'type' => 'النوع',
         'status' => 'الحالة',
@@ -239,7 +243,8 @@ $translations = [
         'renewal_fee' => 'رسوم التجديد/الاستبدال: ',
         'payment_amount' => '3,000 أوقية',
         'payment_description' => 'لتجديد أو استبدال البطاقة',
-        'payment_note' => 'الدفع عبر الموبايل موني (بنكيلي، مسرافي، سداد، إلخ)'
+        'payment_note' => 'الدفع عبر الموبايل موني (بنكيلي، مسرافي، سداد، إلخ)',
+        'form_note' => 'بعد الإرسال، ستحتاج إلى تحميل المستندات المطلوبة.' // ADDED THIS
     ]
 ];
 
@@ -315,7 +320,7 @@ $dir = $lang === 'ar' ? 'rtl' : 'ltr';
                     </div>
                     <div class="card payment-card">
                         <div class="card-header">
-                            <h3><i class="fas fa-money-bill-wave"></i> <?php echo $text['payment_fee']; ?></h3>
+                            <h3>💳 <?php echo $text['payment_fee']; ?></h3>
                         </div>
                         <div class="card-body">
                             <div class="amount-display">
@@ -327,8 +332,7 @@ $dir = $lang === 'ar' ? 'rtl' : 'ltr';
                                 <div class="transaction-id" id="transactionId"></div>
                             </div>
                             <button class="action-btn payment" onclick="makePayment('id_renewal')">
-                                <i class="fas fa-credit-card"></i>
-                                <?php echo $text['pay_now']; ?>
+                                💳 <?php echo $text['pay_now']; ?>
                             </button>
                             <p class="payment-amount-note">
                                 <?php echo $text['payment_note']; ?>
@@ -341,17 +345,16 @@ $dir = $lang === 'ar' ? 'rtl' : 'ltr';
                         </div>
                         <div class="card-body">
                             <button class="action-btn primary" onclick="downloadID()">
-                                <?php echo $text['download_id']; ?>
+                                📥 <?php echo $text['download_id']; ?>
                             </button>
                             <button class="action-btn secondary" onclick="showApplicationForm()">
-                                <?php echo $text['apply_new']; ?>
+                                📄 <?php echo $text['apply_new']; ?>
                             </button>
                             <button class="action-btn tertiary" onclick="uploadDocuments()">
-                                <?php echo $text['upload_documents']; ?>
+                                📎 <?php echo $text['upload_documents']; ?>
                             </button>
                             <button class="action-btn secondary" onclick="makePayment('id_renewal')">
-                                <i class="fas fa-credit-card"></i>
-                                <?php echo $text['pay_renewal']; ?>
+                                💰 <?php echo $text['pay_renewal']; ?>
                             </button>
                         </div>
                     </div>
@@ -434,7 +437,7 @@ $dir = $lang === 'ar' ? 'rtl' : 'ltr';
                         <?php endif; ?>
                         <div class="upload-section">
                             <button class="btn-upload" onclick="uploadDocuments()">
-                                <?php echo $text['upload_documents']; ?>
+                                📎 <?php echo $text['upload_documents']; ?>
                             </button>
                         </div>
                     </div>
@@ -480,7 +483,7 @@ $dir = $lang === 'ar' ? 'rtl' : 'ltr';
                             </div>
                             
                             <div class="form-footer">
-                                <p class="form-note">* After submission, you will need to upload required documents.</p>
+                                <p class="form-note">* <?php echo $text['form_note']; ?></p>
                                 <button type="submit" name="apply_new" class="btn-submit">
                                     <?php echo $text['submit']; ?>
                                 </button>
@@ -555,7 +558,7 @@ $dir = $lang === 'ar' ? 'rtl' : 'ltr';
                                     <div class="file-upload-area">
                                         <input type="file" id="receiptFile" name="receipt_file" accept=".jpg,.jpeg,.png,.pdf" required>
                                         <label for="receiptFile" class="file-label">
-                                            <i class="fas fa-cloud-upload-alt" style="font-size: 2rem; color: rgba(100, 116, 139, 1); margin-bottom: 1rem;"></i>
+                                            📎
                                             <div class="upload-text">Click to upload receipt</div>
                                             <div class="file-size">JPG, PNG, or PDF (max 5MB)</div>
                                             <div id="fileName"></div>
@@ -563,8 +566,7 @@ $dir = $lang === 'ar' ? 'rtl' : 'ltr';
                                     </div>
                                     
                                     <button type="submit" class="btn-upload-receipt">
-                                        <i class="fas fa-paper-plane"></i>
-                                        Submit Receipt
+                                        📤 Submit Receipt
                                     </button>
                                 </div>
                                 
@@ -583,7 +585,7 @@ $dir = $lang === 'ar' ? 'rtl' : 'ltr';
         </main>
     </div>
 
+    <!-- JavaScript file -->
     <script src="citizen_dashboard.js"></script>
 </body>
 </html>
-

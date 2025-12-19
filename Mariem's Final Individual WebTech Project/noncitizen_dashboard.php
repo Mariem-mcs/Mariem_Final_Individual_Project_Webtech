@@ -5,7 +5,8 @@ if (session_status() === PHP_SESSION_NONE) {
 
 require_once 'config.php';
 if (!is_logged_in() || $_SESSION['user_type'] !== 'non_citizen') {
-    redirect('login.php');
+    header("Location: login.php");  
+    exit();                          
 }
 
 $user_id = $_SESSION['user_id'];
@@ -682,4 +683,5 @@ $has_active_permit = ($permit && $permit['status'] === 'active');
     <script src="noncitizen_dashboard.js"></script>
 </body>
 </html>
+
 [file content end]

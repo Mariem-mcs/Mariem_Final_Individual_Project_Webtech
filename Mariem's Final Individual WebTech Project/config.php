@@ -307,23 +307,15 @@ function generate_csrf_token() {
     return $_SESSION['csrf_token'];
 }
 
-/**
- * Verify CSRF token
- */
+
 function verify_csrf_token($token) {
     return isset($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $token);
 }
 
-// ============================================
-// INITIALIZATION
-// ============================================
 
-// Start session automatically
-start_secure_session();
 
-// Error reporting (disable in production)
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
+
 
 ?>
+
 

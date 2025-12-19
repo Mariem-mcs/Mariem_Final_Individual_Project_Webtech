@@ -1,11 +1,19 @@
+
 <?php
+// Enable error reporting
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
+// Start session
 session_start();
 require_once 'config.php';
 
-// The web checks if user is logged in and is citizen:
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'citizen') {
-    redirect('login.php');
+// FIX 1: Check for user_type instead of role, and use header() instead of redirect()
+if (!isset($_SESSION['user_id']) || ($_SESSION['user_type'] ?? '') !== 'citizen') {
+    header("Location: login.php");
+    exit();
 }
+
 if (isset($_GET['lang']) && in_array($_GET['lang'], ['fr', 'ar', 'en'])) {
     $_SESSION['language'] = $_GET['lang'];
 }
@@ -19,6 +27,14 @@ $stmt->bind_param("i", $user_id);
 $stmt->execute();
 $user = $stmt->get_result()->fetch_assoc();
 $stmt->close();
+
+// FIX 2: Add additional check to ensure user is citizen
+if (!$user || $user['user_type'] !== 'citizen') {
+    header("Location: login.php?error=not_citizen");
+    exit();
+}
+
+// Rest of your code remains the same...
 $applications = [];
 $result = $conn->query("
     SELECT * FROM applications 
@@ -29,6 +45,7 @@ $result = $conn->query("
 while ($row = $result->fetch_assoc()) {
     $applications[] = $row;
 }
+
 $documents = [];
 $result = $conn->query("
     SELECT d.*, a.application_type 
@@ -40,6 +57,7 @@ $result = $conn->query("
 while ($row = $result->fetch_assoc()) {
     $documents[] = $row;
 }
+
 $has_pending_application = $conn->query("
     SELECT COUNT(*) as count FROM applications 
     WHERE user_id = $user_id AND status IN ('pending', 'under_review')
@@ -568,3 +586,4 @@ $dir = $lang === 'ar' ? 'rtl' : 'ltr';
     <script src="citizen_dashboard.js"></script>
 </body>
 </html>
+

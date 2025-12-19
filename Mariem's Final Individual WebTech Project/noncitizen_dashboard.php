@@ -9,29 +9,21 @@ require_once 'config.php';
 // Start session using your config function
 start_secure_session();
 
-// DEBUG: Show session info
-echo "<!-- DEBUG: Session ID = " . session_id() . " -->\n";
-echo "<!-- DEBUG: Session data = " . json_encode($_SESSION) . " -->\n";
-echo "<!-- DEBUG: is_logged_in() = " . (is_logged_in() ? 'TRUE' : 'FALSE') . " -->\n";
-
 // Check if user is logged in using the function from config.php
 if (!is_logged_in()) {
-    echo "<!-- DEBUG: User not logged in, redirecting to login -->\n";
     header("Location: login.php");
     exit();
 }
 
-// Check user type
+// Check user type - normalize different formats
 $user_type = $_SESSION['user_type'] ?? '';
-echo "<!-- DEBUG: user_type = '$user_type' -->\n";
+$normalized_user_type = strtolower(str_replace([' ', '_'], '', $user_type));
 
-// Accept both 'noncitizen' and 'non_citizen'
-if ($user_type !== 'noncitizen' && $user_type !== 'non_citizen') {
-    echo "<!-- DEBUG: Wrong user type, redirecting -->\n";
-    // If not noncitizen, redirect to appropriate page
-    if ($user_type === 'citizen') {
+// If not noncitizen, redirect to appropriate page
+if ($normalized_user_type !== 'noncitizen') {
+    if ($normalized_user_type === 'citizen') {
         header("Location: citizen_dashboard.php");
-    } elseif ($user_type === 'admin') {
+    } elseif ($normalized_user_type === 'admin') {
         header("Location: admin_dashboard.php");
     } else {
         // Invalid user_type, go to login
@@ -40,15 +32,11 @@ if ($user_type !== 'noncitizen' && $user_type !== 'non_citizen') {
     exit();
 }
 
-echo "<!-- DEBUG: User is noncitizen, continuing... -->\n";
-
 $user_id = $_SESSION['user_id'];
 
-// Language handling - FIXED REDIRECT LOOP
+// Language handling
 if (isset($_GET['lang']) && in_array($_GET['lang'], ['fr', 'ar', 'en'])) {
     $_SESSION['language'] = $_GET['lang'];
-    // Remove the redirect that causes the loop
-    // Just set the session and continue
     $lang = $_GET['lang'];
 } else {
     $lang = $_SESSION['language'] ?? 'fr';
@@ -63,16 +51,25 @@ $stmt->close();
 
 // Check if user exists
 if (!$user) {
-    echo "<!-- DEBUG: User not found in database -->\n";
     session_destroy();
     header("Location: login.php");
     exit();
 }
 
-$payment_amount = 45000; // Default for other countries
-if (strtolower($user['nationality']) === 'senegal' || strtolower($user['nationality']) === 'sénégalaise') {
-    $payment_amount = 1500;
+// Calculate payment amount based on nationality
+$nationality = strtolower(trim($user['nationality'] ?? ''));
+$is_senegalese = false;
+
+// Check if Senegalese (multiple possible spellings)
+$senegalese_keywords = ['senegal', 'sénégal', 'sénégalaise', 'sénégalaise', 'senegalese'];
+foreach ($senegalese_keywords as $keyword) {
+    if (strpos($nationality, $keyword) !== false) {
+        $is_senegalese = true;
+        break;
+    }
 }
+
+$payment_amount = $is_senegalese ? 1500 : 45000;
 $payment_amount_formatted = number_format($payment_amount, 0, ',', ' ') . ' MRU';
 
 // The Language translations section:
@@ -128,13 +125,13 @@ $translations = [
         'make_payment' => 'Make Payment',
         'payment_fee' => 'Residence Permit Fee',
         'pay_now' => 'Pay Now',
-        'nationality_note' => 'Fee based on your nationality: ',
+        'nationality_note' => 'Fee based on your nationality:',
         'payment_modal_title' => 'Pay Residence Permit Fee',
         'select_provider' => 'Select Mobile Money Provider',
         'payment_instructions' => 'Payment Instructions',
         'step_payment_1' => '1. Dial the payment number on your phone',
         'step_payment_2' => '2. Enter the transaction ID as reference',
-        'step_payment_3' => '3. Confirm payment of ',
+        'step_payment_3' => '3. Confirm payment of',
         'step_payment_4' => '4. Take screenshot of confirmation',
         'step_payment_5' => '5. Upload receipt below',
         'upload_receipt' => 'Upload Payment Receipt',
@@ -155,7 +152,10 @@ $translations = [
         'one_year_validity' => '• 1-year validity from approval date',
         'download_permit_card' => '• You can download your permit card',
         'renewal_available' => '• Renewal available 30 days before expiry',
-        'sample_info_note' => 'Sample information shown. Your actual permit details will appear here after approval.'
+        'sample_info_note' => 'Sample information shown. Your actual permit details will appear here after approval.',
+        'welcome_message' => 'Welcome to your resident dashboard!',
+        'user_type_label' => 'User Type',
+        'nationality_label' => 'Nationality'
     ],
     'fr' => [
         'dashboard' => 'Tableau de bord Résident',
@@ -208,13 +208,13 @@ $translations = [
         'make_payment' => 'Effectuer le paiement',
         'payment_fee' => 'Frais de permis de résidence',
         'pay_now' => 'Payer maintenant',
-        'nationality_note' => 'Frais selon votre nationalité: ',
+        'nationality_note' => 'Frais selon votre nationalité:',
         'payment_modal_title' => 'Payer les frais de permis',
         'select_provider' => 'Sélectionner un opérateur',
         'payment_instructions' => 'Instructions de paiement',
         'step_payment_1' => '1. Composez le numéro sur votre téléphone',
         'step_payment_2' => '2. Entrez l\'ID transaction comme référence',
-        'step_payment_3' => '3. Confirmez le paiement de ',
+        'step_payment_3' => '3. Confirmez le paiement de',
         'step_payment_4' => '4. Prenez une capture d\'écran',
         'step_payment_5' => '5. Téléchargez le reçu ci-dessous',
         'upload_receipt' => 'Télécharger le reçu',
@@ -235,7 +235,10 @@ $translations = [
         'one_year_validity' => '• Validité d\'1 an à partir de la date d\'approbation',
         'download_permit_card' => '• Vous pourrez télécharger votre carte de permis',
         'renewal_available' => '• Renouvellement disponible 30 jours avant expiration',
-        'sample_info_note' => 'Informations d\'exemple affichées. Vos détails réels apparaîtront هنا بعد الموافقة.'
+        'sample_info_note' => 'Informations d\'exemple affichées. Vos détails réels apparaîtront هنا après الموافقة.',
+        'welcome_message' => 'Bienvenue sur votre tableau de bord résident!',
+        'user_type_label' => 'Type d\'utilisateur',
+        'nationality_label' => 'Nationalité'
     ],
     'ar' => [
         'dashboard' => 'لوحة تحكم المقيم',
@@ -288,13 +291,13 @@ $translations = [
         'make_payment' => 'دفع الرسوم',
         'payment_fee' => 'رسوم تصريح الإقامة',
         'pay_now' => 'ادفع الآن',
-        'nationality_note' => 'الرسوم حسب جنسيتك: ',
+        'nationality_note' => 'الرسوم حسب جنسيتك:',
         'payment_modal_title' => 'دفع رسوم تصريح الإقامة',
         'select_provider' => 'اختر مزود الموبايل موني',
         'payment_instructions' => 'تعليمات الدفع',
         'step_payment_1' => '1. اطلب رقم الدفع على هاتفك',
         'step_payment_2' => '2. أدخل رمز العملية كمرجع',
-        'step_payment_3' => '3. تأكيد دفع مبلغ ',
+        'step_payment_3' => '3. تأكيد دفع مبلغ',
         'step_payment_4' => '4. التقط صورة للتأكيد',
         'step_payment_5' => '5. ارفع الإيصال أدناه',
         'upload_receipt' => 'رفع إيصال الدفع',
@@ -315,7 +318,10 @@ $translations = [
         'one_year_validity' => '• صلاحية سنة واحدة من تاريخ الموافقة',
         'download_permit_card' => '• يمكنك تحميل بطاقة التصريح الخاصة بك',
         'renewal_available' => '• التجديد متاح قبل 30 يومًا من انتهاء الصلاحية',
-        'sample_info_note' => 'يتم عرض معلومات نموذجية. ستظهر تفاصيل التصريح الفعلية هنا بعد الموافقة.'
+        'sample_info_note' => 'يتم عرض معلومات نموذجية. ستظهر تفاصيل التصريح الفعلية هنا بعد الموافقة.',
+        'welcome_message' => 'مرحبا بكم في لوحة تحكم المقيم!',
+        'user_type_label' => 'نوع المستخدم',
+        'nationality_label' => 'الجنسية'
     ]
 ];
 
@@ -330,8 +336,6 @@ $permit_result = $permit_query->get_result();
 $permit = $permit_result->fetch_assoc();
 
 $has_active_permit = ($permit && $permit['status'] === 'active');
-
-// Continue with HTML...
 ?>
 <!DOCTYPE html>
 <html lang="<?php echo $lang; ?>" dir="<?php echo $dir; ?>">
@@ -340,6 +344,58 @@ $has_active_permit = ($permit && $permit['status'] === 'active');
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo $text['dashboard']; ?> - IDTrack</title>
     <link rel="stylesheet" href="noncitizen_dashboard.css">
+    <style>
+        /* Additional styles for proper layout */
+        .status-badge {
+            display: inline-block;
+            padding: 0.35rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-top: 10px;
+        }
+        .status-pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        .status-active {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        .amount-display {
+            text-align: center;
+            padding: 1.5rem;
+            background: #f8fafc;
+            border-radius: 10px;
+            border: 2px solid #e2e8f0;
+            margin-bottom: 1rem;
+        }
+        .amount-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #CE1126;
+            margin: 10px 0;
+        }
+        .language-switch {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+        }
+        .language-switch a {
+            padding: 5px 10px;
+            border-radius: 5px;
+            background: #f1f5f9;
+            color: #666;
+            text-decoration: none;
+            font-size: 12px;
+        }
+        .language-switch a.active {
+            background: #CE1126;
+            color: white;
+        }
+    </style>
 </head>
 <body>
     <div class="dashboard-container">
@@ -375,6 +431,12 @@ $has_active_permit = ($permit && $permit['status'] === 'active');
         </aside>
         
         <main class="main-content">
+            <div class="language-switch">
+                <a href="?lang=fr" class="<?php echo $lang === 'fr' ? 'active' : ''; ?>">FR</a>
+                <a href="?lang=ar" class="<?php echo $lang === 'ar' ? 'active' : ''; ?>">AR</a>
+                <a href="?lang=en" class="<?php echo $lang === 'en' ? 'active' : ''; ?>">EN</a>
+            </div>
+            
             <header class="header">
                 <div class="welcome">
                     <h1><?php echo $text['welcome']; ?>, <?php echo htmlspecialchars($user['full_name']); ?>!</h1>
@@ -398,15 +460,15 @@ $has_active_permit = ($permit && $permit['status'] === 'active');
                         </div>
                         <div class="info-item">
                             <span class="label"><?php echo $text['phone']; ?>:</span>
-                            <span class="value"><?php echo htmlspecialchars($user['phone']); ?></span>
+                            <span class="value"><?php echo htmlspecialchars($user['phone'] ?? 'N/A'); ?></span>
                         </div>
                         <div class="info-item">
                             <span class="label"><?php echo $text['dob']; ?>:</span>
-                            <span class="value"><?php echo date('d/m/Y', strtotime($user['date_of_birth'])); ?></span>
+                            <span class="value"><?php echo !empty($user['date_of_birth']) ? date('d/m/Y', strtotime($user['date_of_birth'])) : 'N/A'; ?></span>
                         </div>
                         <div class="info-item">
                             <span class="label"><?php echo $text['nationality']; ?>:</span>
-                            <span class="value"><?php echo htmlspecialchars($user['nationality']); ?></span>
+                            <span class="value"><?php echo htmlspecialchars($user['nationality'] ?? 'N/A'); ?></span>
                         </div>
                     </div>
                 </div>
@@ -416,16 +478,22 @@ $has_active_permit = ($permit && $permit['status'] === 'active');
                         <h3>🏠 <?php echo $text['residence_status']; ?></h3>
                     </div>
                     <div class="card-body">
-                        <p>Welcome to your resident dashboard!</p>
-                        <p>Your user type: <strong><?php echo $user_type; ?></strong></p>
-                        <p>Your nationality: <strong><?php echo htmlspecialchars($user['nationality']); ?></strong></p>
+                        <p><?php echo $text['welcome_message']; ?></p>
+                        <div class="info-item">
+                            <span class="label"><?php echo $text['user_type_label']; ?>:</span>
+                            <span class="value"><?php echo htmlspecialchars($user_type); ?></span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label"><?php echo $text['nationality_label']; ?>:</span>
+                            <span class="value"><?php echo htmlspecialchars($user['nationality'] ?? 'N/A'); ?></span>
+                        </div>
                         
                         <?php if ($has_active_permit): ?>
-                            <div class="status-active" style="background: #d1fae5; color: #065f46; padding: 10px; border-radius: 8px; margin-top: 10px;">
+                            <div class="status-badge status-active">
                                 ✅ <?php echo $text['status_active']; ?>
                             </div>
                         <?php else: ?>
-                            <div class="status-pending" style="background: #fef3c7; color: #92400e; padding: 10px; border-radius: 8px; margin-top: 10px;">
+                            <div class="status-badge status-pending">
                                 ⏳ <?php echo $text['status_pending']; ?>
                             </div>
                         <?php endif; ?>
@@ -443,7 +511,10 @@ $has_active_permit = ($permit && $permit['status'] === 'active');
                             <div class="amount-label"><?php echo $text['nationality_note']; ?></div>
                             <div class="amount-value"><?php echo $payment_amount_formatted; ?></div>
                             <div class="amount-description">
-                                <?php echo strtolower($user['nationality']) === 'senegal' || strtolower($user['nationality']) === 'sénégalaise' ? $text['senegal_rate'] : $text['other_rate']; ?>
+                                <?php echo $is_senegalese ? $text['senegal_rate'] : $text['other_rate']; ?>
+                            </div>
+                            <div style="margin-top: 10px; color: #666; font-size: 0.9rem;">
+                                <?php echo $is_senegalese ? '🇸🇳 Vous êtes Sénégalais(e) - tarif préférentiel' : '🌍 Autre nationalité - tarif standard'; ?>
                             </div>
                         </div>
                         <button onclick="makePayment()" class="action-btn payment">
@@ -454,9 +525,8 @@ $has_active_permit = ($permit && $permit['status'] === 'active');
             </div>
             
             <div style="padding: 20px; text-align: center; background: #f8fafc; border-radius: 10px; margin-top: 20px;">
-                <p>✅ Non-citizen/resident dashboard loaded successfully!</p>
-                <p style="color: #666; font-size: 0.9rem;">Debug: User type is "<?php echo $user_type; ?>"</p>
-                <a href="logout.php" class="logout-btn" style="display: inline-block; margin-top: 10px; padding: 10px 20px;">Logout</a>
+                <p>✅ Tableau de bord résident chargé avec succès!</p>
+                <a href="logout.php" class="logout-btn" style="display: inline-block; margin-top: 10px; padding: 10px 20px;"><?php echo $text['logout']; ?></a>
             </div>
         </main>
     </div>
@@ -469,12 +539,20 @@ $has_active_permit = ($permit && $permit['status'] === 'active');
                 <span class="close-modal" onclick="closePaymentModal()">×</span>
             </div>
             <div class="modal-body">
-                <!-- Payment content here -->
-                <p>Payment feature will be implemented here.</p>
+                <p>Cette fonctionnalité sera implémentée prochainement.</p>
             </div>
         </div>
     </div>
     
     <script src="noncitizen_dashboard.js"></script>
+    <script>
+    function makePayment() {
+        alert('La fonction de paiement sera disponible bientôt.');
+    }
+    
+    function closePaymentModal() {
+        document.getElementById('paymentModal').style.display = 'none';
+    }
+    </script>
 </body>
 </html>

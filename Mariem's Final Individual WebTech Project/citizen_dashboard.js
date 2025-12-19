@@ -1,53 +1,37 @@
+// citizen_dashboard.js
 function showApplicationForm() {
     document.getElementById("apply").scrollIntoView({ behavior: "smooth" });
 }
+
 function uploadDocuments() {
-    document.getElementById("documentInput").click();
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = '.jpg,.jpeg,.png,.pdf';
+    fileInput.click();
+    
+    fileInput.addEventListener('change', function() {
+        if (this.files.length > 0) {
+            alert("Selected file: " + this.files[0].name);
+            // You can add file upload logic here
+        }
+    });
 }
-document.addEventListener("DOMContentLoaded", function () {
-    const docInput = document.getElementById("documentInput");
-    if (docInput) {
-        docInput.addEventListener("change", function () {
-            if (this.files.length > 0) {
-                alert("Selected file: " + this.files[0].name);
-                document.getElementById("documentUploadForm").submit();
-            }
-        });
-    }
-});
+
 function downloadID() {
     alert("Your ID card will be available for download once approved.");
 }
+
 function trackApplication(appId) {
     alert("Tracking application ID: " + appId);
 }
-function makePayment() {
-    document.getElementById("paymentModal").style.display = "block";
-    generateTransactionId();
-}
 
-function closePaymentModal() {
-    document.getElementById("paymentModal").style.display = "none";
-}
-
-function generateTransactionId() {
-    const tx = "TX" + Math.floor(Math.random() * 1000000);
-    document.getElementById("transactionId").innerText = tx;
-    document.getElementById("referenceId").innerText = tx;
-    document.getElementById("paymentTransactionId").value = tx;
-}
-
-function selectProvider(provider) {
-    document.getElementById("selectedProvider").value = provider;
-    document.getElementById("selectedProviderInfo").style.display = "block";
-    document.getElementById("providerNumber").innerText = "+222 44 55 66 77";
-}
 function makePayment(paymentType) {
     const transactionId = 'TX' + Date.now() + Math.floor(Math.random() * 1000);
     document.getElementById('transactionId').textContent = 'Transaction ID: ' + transactionId;
     document.getElementById('referenceId').textContent = transactionId;
     document.getElementById('paymentTransactionId').value = transactionId;
     document.getElementById('paymentType').value = paymentType;
+    document.getElementById('instructionTransactionId').textContent = transactionId;
     
     let amount = '3,000 MRU';
     if (paymentType === 'id_renewal') {
@@ -56,6 +40,7 @@ function makePayment(paymentType) {
         document.getElementById('amountValue').textContent = amount;
         document.getElementById('amountDescription').textContent = 'For ID card renewal/replacement';
     }
+    
     document.getElementById('selectedProviderInfo').style.display = 'none';
     document.getElementById('receiptFile').value = '';
     document.getElementById('fileName').textContent = '';
@@ -86,7 +71,8 @@ function selectProvider(provider) {
         opt.classList.remove('selected');
     });
     event.target.closest('.provider-option').classList.add('selected');
-        const providerNumbers = {
+    
+    const providerNumbers = {
         'bankily': '+222 32423440',
         'masrivi': '+222 32423440',
         'sadad': '+222 32423440',
@@ -99,7 +85,10 @@ function selectProvider(provider) {
     document.getElementById('selectedProviderInfo').style.display = 'block';
     document.getElementById('selectedProvider').value = provider;
 }
+
+// Document ready function
 document.addEventListener("DOMContentLoaded", function () {
+    // File upload preview for receipt
     const receiptFile = document.getElementById('receiptFile');
     if (receiptFile) {
         receiptFile.addEventListener('change', function() {
@@ -110,6 +99,8 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         });
     }
+    
+    // Form validation for receipt upload
     const receiptForm = document.getElementById('receiptUploadForm');
     if (receiptForm) {
         receiptForm.addEventListener('submit', function(e) {
@@ -149,15 +140,46 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
     
+    // Close modal when clicking outside
     window.onclick = function(event) {
         const modal = document.getElementById('paymentModal');
         if (event.target === modal) {
             closePaymentModal();
         }
     }
+    
+    // Close modal with Escape key
     document.addEventListener('keydown', function(event) {
         if (event.key === 'Escape') {
             closePaymentModal();
         }
     });
+    
+    // Smooth scroll for navigation
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function(e) {
+            e.preventDefault();
+            const targetId = this.getAttribute('href');
+            if (targetId === '#') return;
+            
+            const targetElement = document.querySelector(targetId);
+            if (targetElement) {
+                // Update active nav item
+                document.querySelectorAll('.nav-item').forEach(item => {
+                    item.classList.remove('active');
+                });
+                this.classList.add('active');
+                
+                // Scroll to target
+                targetElement.scrollIntoView({ 
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+            }
+        });
+    });
+    
+    // Generate initial transaction ID
+    const initialId = 'IDT' + Date.now();
+    document.getElementById('transactionId').textContent = 'Reference: ' + initialId;
 });

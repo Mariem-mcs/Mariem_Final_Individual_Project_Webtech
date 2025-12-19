@@ -1,185 +1,283 @@
-// citizen_dashboard.js
-function showApplicationForm() {
-    document.getElementById("apply").scrollIntoView({ behavior: "smooth" });
+// Utility function to get element by ID
+function $(id) {
+    return document.getElementById(id);
 }
 
-function uploadDocuments() {
-    const fileInput = document.createElement('input');
-    fileInput.type = 'file';
-    fileInput.accept = '.jpg,.jpeg,.png,.pdf';
-    fileInput.click();
+// Generate transaction ID
+function generateTransactionId() {
+    const timestamp = Date.now();
+    const random = Math.floor(Math.random() * 10000);
+    return 'TRX-' + timestamp + '-' + random;
+}
+
+// Open payment modal
+function openPaymentModal() {
+    const modal = $('paymentModal');
+    if (!modal) return;
     
-    fileInput.addEventListener('change', function() {
-        if (this.files.length > 0) {
-            alert("Selected file: " + this.files[0].name);
-            // You can add file upload logic here
+    modal.style.display = 'block';
+    
+    // Generate new transaction ID
+    const transactionId = generateTransactionId();
+    
+    // Update all transaction ID displays
+    const displayIds = document.querySelectorAll('[id*="TransactionId"], [id*="transactionId"]');
+    displayIds.forEach(el => {
+        if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+            el.value = transactionId;
+        } else {
+            el.textContent = transactionId;
         }
     });
-}
-
-function downloadID() {
-    alert("Your ID card will be available for download once approved.");
-}
-
-function trackApplication(appId) {
-    alert("Tracking application ID: " + appId);
-}
-
-function makePayment(paymentType) {
-    const transactionId = 'TX' + Date.now() + Math.floor(Math.random() * 1000);
-    document.getElementById('transactionId').textContent = 'Transaction ID: ' + transactionId;
-    document.getElementById('referenceId').textContent = transactionId;
-    document.getElementById('paymentTransactionId').value = transactionId;
-    document.getElementById('paymentType').value = paymentType;
-    document.getElementById('instructionTransactionId').textContent = transactionId;
     
-    let amount = '3,000 MRU';
-    if (paymentType === 'id_renewal') {
-        amount = '3,000 MRU';
-        document.getElementById('paymentTitle').textContent = 'ID Card Renewal Fee';
-        document.getElementById('amountValue').textContent = amount;
-        document.getElementById('amountDescription').textContent = 'For ID card renewal/replacement';
-    }
+    // Update specific elements
+    const displayId = $('displayTransactionId');
+    const paymentId = $('paymentTransactionId');
     
-    document.getElementById('selectedProviderInfo').style.display = 'none';
-    document.getElementById('receiptFile').value = '';
-    document.getElementById('fileName').textContent = '';
-    document.querySelectorAll('.provider-option').forEach(opt => {
-        opt.classList.remove('selected');
-    });
-    document.getElementById('selectedProvider').value = '';
-    document.getElementById('paymentModal').style.display = 'block';
-}
-
-function closePaymentModal() {
-    document.getElementById('paymentModal').style.display = 'none';
+    if (displayId) displayId.textContent = transactionId;
+    if (paymentId) paymentId.value = transactionId;
+    
+    // Reset form
     resetPaymentForm();
 }
 
+// Close payment modal
+function closePaymentModal() {
+    const modal = $('paymentModal');
+    if (modal) {
+        modal.style.display = 'none';
+        resetPaymentForm();
+    }
+}
+
+// Reset payment form
 function resetPaymentForm() {
-    document.getElementById('selectedProviderInfo').style.display = 'none';
-    document.getElementById('receiptFile').value = '';
-    document.getElementById('fileName').textContent = '';
-    document.querySelectorAll('.provider-option').forEach(opt => {
-        opt.classList.remove('selected');
+    // Hide provider info
+    const providerInfo = $('selectedProviderInfo');
+    if (providerInfo) providerInfo.style.display = 'none';
+    
+    // Clear provider selection
+    const providerInput = $('selectedProvider');
+    if (providerInput) providerInput.value = '';
+    
+    // Clear file input
+    const receiptFile = $('receiptFile');
+    if (receiptFile) receiptFile.value = '';
+    
+    // Clear file name display
+    const fileName = $('fileName');
+    if (fileName) fileName.textContent = '';
+    
+    // Remove selected class from all providers
+    document.querySelectorAll('.provider-option').forEach(el => {
+        el.classList.remove('selected');
     });
-    document.getElementById('selectedProvider').value = '';
 }
 
-function selectProvider(provider) {
-    document.querySelectorAll('.provider-option').forEach(opt => {
-        opt.classList.remove('selected');
+// Select payment provider
+function selectProvider(provider, name, element) {
+    // Remove selected class from all providers
+    document.querySelectorAll('.provider-option').forEach(el => {
+        el.classList.remove('selected');
     });
-    event.target.closest('.provider-option').classList.add('selected');
     
-    const providerNumbers = {
-        'bankily': '+222 32423440',
-        'masrivi': '+222 32423440',
-        'sadad': '+222 32423440',
-        'click': '+222 48305130',
-        'binbank': '+222 48305130',
-        'moovemauritel': '+222 48305130'
-    };
+    // Add selected class to clicked provider
+    if (element) element.classList.add('selected');
     
-    document.getElementById('providerNumber').textContent = providerNumbers[provider] || '+222 XX XX XX XX';
-    document.getElementById('selectedProviderInfo').style.display = 'block';
-    document.getElementById('selectedProvider').value = provider;
+    // Set provider value
+    const providerInput = $('selectedProvider');
+    if (providerInput) providerInput.value = provider;
+    
+    // Show provider info
+    const providerInfo = $('selectedProviderInfo');
+    const providerName = $('selectedProviderName');
+    const providerNumber = $('providerNumber');
+    
+    if (providerInfo && providerName && providerNumber) {
+        providerName.textContent = name || provider;
+        
+        // Set provider number
+        const providerNumbers = {
+            'bankily': '+222 32423440',
+            'masrivi': '+222 32423440',
+            'sadad': '+222 32423440',
+            'click': '+222 48305130',
+            'binbank': '+222 48305130',
+            'moovemauritel': '+222 48305130'
+        };
+        
+        providerNumber.textContent = providerNumbers[provider] || '+222 XX XX XX XX';
+        providerInfo.style.display = 'block';
+    }
 }
 
-// Document ready function
-document.addEventListener("DOMContentLoaded", function () {
-    // File upload preview for receipt
-    const receiptFile = document.getElementById('receiptFile');
+// Handle document upload alerts
+function uploadDocuments() {
+    alert('Document upload feature is active. Please use the form above to upload documents.');
+}
+
+function downloadPermit() {
+    alert('Residence permit download will be available after admin approval.');
+}
+
+function updateProfile() {
+    alert('Profile update feature coming soon.');
+}
+
+function extendStay() {
+    alert('Residence extension request submitted.');
+}
+
+// Initialize when DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+    // Initialize transaction ID
+    const transactionId = generateTransactionId();
+    const displayId = $('displayTransactionId');
+    const paymentId = $('paymentTransactionId');
+    
+    if (displayId) displayId.textContent = transactionId;
+    if (paymentId) paymentId.value = transactionId;
+    
+    // Handle receipt file change
+    const receiptFile = $('receiptFile');
     if (receiptFile) {
-        receiptFile.addEventListener('change', function() {
+        receiptFile.addEventListener('change', function () {
             if (this.files.length > 0) {
-                document.getElementById('fileName').textContent = 
-                    'Selected: ' + this.files[0].name + ' (' + 
-                    Math.round(this.files[0].size / 1024) + ' KB)';
+                const file = this.files[0];
+                const fileName = $('fileName');
+                if (fileName) {
+                    fileName.textContent = `${file.name} (${Math.round(file.size / 1024)} KB)`;
+                }
             }
         });
     }
     
-    // Form validation for receipt upload
-    const receiptForm = document.getElementById('receiptUploadForm');
+    // Handle receipt form submission
+    const receiptForm = $('receiptUploadForm');
     if (receiptForm) {
-        receiptForm.addEventListener('submit', function(e) {
-            e.preventDefault();
+        receiptForm.addEventListener('submit', function (e) {
+            const providerInput = $('selectedProvider');
+            const receiptFile = $('receiptFile');
             
-            const selectedProvider = document.getElementById('selectedProvider').value;
-            if (!selectedProvider) {
-                alert('Please select a mobile money provider');
-                return false;
+            if (!providerInput || !providerInput.value) {
+                e.preventDefault();
+                alert('Veuillez sélectionner un opérateur de paiement.');
+                return;
             }
             
-            const fileInput = document.getElementById('receiptFile');
-            if (!fileInput.files.length) {
-                alert('Please select a receipt file');
-                return false;
+            if (!receiptFile || !receiptFile.files.length) {
+                e.preventDefault();
+                alert('Veuillez télécharger votre reçu de paiement.');
+                return;
             }
             
-            const file = fileInput.files[0];
-            const validTypes = ['image/jpeg', 'image/png', 'application/pdf'];
-            const maxSize = 5 * 1024 * 1024; 
+            const file = receiptFile.files[0];
+            const allowed = ['image/jpeg', 'image/png', 'application/pdf'];
             
-            if (!validTypes.includes(file.type)) {
-                alert('Please upload only JPG, PNG, or PDF files');
-                return false;
+            if (!allowed.includes(file.type)) {
+                e.preventDefault();
+                alert('Seuls les fichiers JPG, PNG ou PDF sont autorisés.');
+                return;
             }
             
-            if (file.size > maxSize) {
-                alert('File size must be less than 5MB');
-                return false;
+            if (file.size > 5 * 1024 * 1024) {
+                e.preventDefault();
+                alert('La taille du fichier doit être inférieure à 5MB.');
+                return;
             }
             
-            if (confirm('Submit receipt? Payment will be verified within 24-48 hours.')) {
-                this.submit();
+            if (!confirm('Soumettre le reçu pour vérification?')) {
+                e.preventDefault();
             }
-            
-            return false;
         });
     }
+    
+    // Handle navigation
+    document.querySelectorAll('.nav-item').forEach(link => {
+        link.addEventListener('click', e => {
+            const target = link.getAttribute('href');
+            if (target && target.startsWith('#')) {
+                e.preventDefault();
+                
+                // Update active state
+                document.querySelectorAll('.nav-item')
+                    .forEach(i => i.classList.remove('active'));
+                link.classList.add('active');
+                
+                // Smooth scroll to section
+                const targetElement = document.querySelector(target);
+                if (targetElement) {
+                    targetElement.scrollIntoView({ behavior: 'smooth' });
+                }
+            }
+        });
+    });
     
     // Close modal when clicking outside
-    window.onclick = function(event) {
-        const modal = document.getElementById('paymentModal');
-        if (event.target === modal) {
+    window.addEventListener('click', e => {
+        const modal = $('paymentModal');
+        if (modal && e.target === modal) {
             closePaymentModal();
+        }
+    });
+    
+    // Close modal with Escape key
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') {
+            closePaymentModal();
+        }
+    });
+    
+    // Auto-select first provider if only one exists
+    const providerOptions = document.querySelectorAll('.provider-option');
+    if (providerOptions.length === 1) {
+        const option = providerOptions[0];
+        const provider = option.getAttribute('onclick')?.match(/'([^']+)'/)?.[1];
+        const name = option.querySelector('.provider-name')?.textContent;
+        if (provider && name) {
+            selectProvider(provider, name, option);
         }
     }
     
-    // Close modal with Escape key
-    document.addEventListener('keydown', function(event) {
-        if (event.key === 'Escape') {
-            closePaymentModal();
-        }
-    });
+    // Session timeout management
+    let sessionTimeout, warningTimeout;
     
-    // Smooth scroll for navigation
-    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-        anchor.addEventListener('click', function(e) {
-            e.preventDefault();
-            const targetId = this.getAttribute('href');
-            if (targetId === '#') return;
-            
-            const targetElement = document.querySelector(targetId);
-            if (targetElement) {
-                // Update active nav item
-                document.querySelectorAll('.nav-item').forEach(item => {
-                    item.classList.remove('active');
-                });
-                this.classList.add('active');
-                
-                // Scroll to target
-                targetElement.scrollIntoView({ 
-                    behavior: 'smooth',
-                    block: 'start'
-                });
+    function resetSessionTimer() {
+        clearTimeout(sessionTimeout);
+        clearTimeout(warningTimeout);
+        
+        // Show warning 10 minutes before timeout (50 minutes)
+        warningTimeout = setTimeout(() => {
+            if (confirm('La session expire dans 10 minutes. Continuer?')) {
+                resetSessionTimer();
             }
-        });
+        }, 50 * 60 * 1000);
+        
+        // Redirect after 1 hour
+        sessionTimeout = setTimeout(() => {
+            window.location.href = 'login.php?timeout=1';
+        }, 60 * 60 * 1000);
+    }
+    
+    // Reset timer on user activity
+    ['click', 'mousemove', 'keypress', 'scroll', 'touchstart'].forEach(evt => {
+        document.addEventListener(evt, resetSessionTimer, { passive: true });
     });
     
-    // Generate initial transaction ID
-    const initialId = 'IDT' + Date.now();
-    document.getElementById('transactionId').textContent = 'Reference: ' + initialId;
+    // Start session timer
+    resetSessionTimer();
+    
+    // Security warning in console
+    console.log('%c ATTENTION', 'color:red;font-size:28px;font-weight:bold;');
+    console.log('%cNe collez pas de code ici si quelqu\'un vous le demande.', 'font-size:14px;color:#666;');
+    console.log('%cCela pourrait compromettre la sécurité de votre compte.', 'font-size:14px;color:#666;');
 });
+
+// Make functions available globally
+window.openPaymentModal = openPaymentModal;
+window.closePaymentModal = closePaymentModal;
+window.selectProvider = selectProvider;
+window.uploadDocuments = uploadDocuments;
+window.downloadPermit = downloadPermit;
+window.updateProfile = updateProfile;
+window.extendStay = extendStay;

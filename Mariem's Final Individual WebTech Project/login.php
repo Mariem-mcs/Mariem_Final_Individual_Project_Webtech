@@ -9,51 +9,21 @@ require_once 'config.php';
 // Now start the secure session manually
 start_secure_session();
 
-// TEMPORARY DEBUG: Show session info
-echo "<!-- SESSION ID: " . session_id() . " -->";
-echo "<!-- SESSION DATA: " . print_r($_SESSION, true) . " -->";
+// FORCE LOGOUT - Clear all session data
+$_SESSION = array();
 
-// Handle logout
-if (isset($_GET['logout'])) {
-    force_logout();
-    header("Location: login.php");
-    exit();
+// Destroy the session cookie
+if (isset($_COOKIE[session_name()])) {
+    setcookie(session_name(), '', time() - 42000, '/');
 }
 
-// Check if already logged in - WITH DEBUG
-if (is_logged_in()) {
-    echo "<!-- DEBUG: User is logged in according to is_logged_in() -->";
-    echo "<!-- DEBUG: user_type = " . ($_SESSION['user_type'] ?? 'NULL') . " -->";
-    
-    $user_type = $_SESSION['user_type'] ?? null;
-    
-    // TEMPORARILY COMMENT OUT REDIRECTS TO DEBUG
-    // if ($user_type === 'admin') {
-    //     header("Location: admin_dashboard.php");
-    // } elseif ($user_type === 'citizen') {
-    //     header("Location: citizen_dashboard.php");
-    // } else {
-    //     header("Location: noncitizen_dashboard.php");
-    // }
-    // exit();
-    
-    // Show debug info instead of redirecting
-    echo "<div style='background: #f0f0f0; padding: 10px; margin: 10px; border: 1px solid #ccc;'>";
-    echo "<h3>Debug Info (Redirects Temporarily Disabled)</h3>";
-    echo "<p>User is logged in. Would redirect to: ";
-    if ($user_type === 'admin') {
-        echo "admin_dashboard.php";
-    } elseif ($user_type === 'citizen') {
-        echo "citizen_dashboard.php";
-    } else {
-        echo "noncitizen_dashboard.php";
-    }
-    echo "</p>";
-    echo "<p><a href='?logout=1'>Click here to logout</a></p>";
-    echo "</div>";
-}
+// Destroy the session
+session_destroy();
 
-// Rest of the file remains the same...
+// Start fresh session
+session_start();
+$_SESSION = array();
+
 // Language handling
 $lang = 'fr'; // Default
 if (isset($_GET['lang']) && in_array($_GET['lang'], ['fr', 'ar', 'en'])) {
@@ -195,17 +165,134 @@ $dir = $lang === 'ar' ? 'rtl' : 'ltr';
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo $t['title']; ?> - IDTrack</title>
     <link rel="stylesheet" href="login.css">
+    <style>
+        /* Minimal inline CSS in case external CSS fails */
+        body { 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            margin: 0;
+        }
+        .login-box {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 400px;
+            width: 100%;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+        }
+        .logo-section h1 {
+            color: #333;
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+        .logo-section p {
+            color: #666;
+            margin-bottom: 25px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 14px;
+        }
+        .form-footer {
+            text-align: right;
+            margin-bottom: 20px;
+        }
+        .forget-password-link {
+            color: #667eea;
+            text-decoration: none;
+            font-size: 13px;
+        }
+        .btn-login {
+            width: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-bottom: 25px;
+        }
+        .divider {
+            position: relative;
+            margin: 25px 0;
+            text-align: center;
+        }
+        .divider span {
+            background: white;
+            padding: 0 15px;
+            color: #666;
+            font-size: 13px;
+        }
+        .divider::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: #e0e0e0;
+        }
+        .register-link, .back-home {
+            margin: 10px 0;
+        }
+        .register-link a, .back-home a {
+            color: #667eea;
+            text-decoration: none;
+        }
+        .language-switch {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 25px;
+        }
+        .language-switch a {
+            color: #666;
+            text-decoration: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+        }
+        .language-switch a.active {
+            background: #667eea;
+            color: white;
+        }
+        .alert-error {
+            background: #fee;
+            color: #c33;
+            padding: 12px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #fcc;
+        }
+    </style>
 </head>
 <body>
     <div class="login-box">
         <div class="logo-section">
-            <img src="authentifactionAuthorizer.png" alt="Logo">
+            <img src="authentifactionAuthorizer.png" alt="Logo" style="width: 80px; height: 80px; margin-bottom: 15px;">
             <h1><?php echo $t['title']; ?></h1>
             <p><?php echo $t['subtitle']; ?></p>
         </div>
 
         <?php if ($error): ?>
-            <div class="alert alert-error"><?php echo htmlspecialchars($error); ?></div>
+            <div class="alert-error"><?php echo htmlspecialchars($error); ?></div>
         <?php endif; ?>
 
         <form method="POST" autocomplete="off"> 
@@ -246,6 +333,5 @@ $dir = $lang === 'ar' ? 'rtl' : 'ltr';
             <a href="?lang=en" class="<?php echo $lang === 'en' ? 'active' : ''; ?>">EN</a>
         </div>
     </div>
-    <script src="login.js"></script>
 </body>
 </html>

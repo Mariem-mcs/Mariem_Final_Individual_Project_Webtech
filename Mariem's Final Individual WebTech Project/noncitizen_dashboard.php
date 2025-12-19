@@ -1,78 +1,31 @@
 <?php
-// Enable ALL errors
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-
-// Include config FIRST (before any session)
-require_once 'config.php';
-
-// Start session using your config function
-start_secure_session();
-
-// Check if user is logged in using the function from config.php
-if (!is_logged_in()) {
-    header("Location: login.php");
-    exit();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
 }
 
-// Check user type - normalize different formats
-$user_type = $_SESSION['user_type'] ?? '';
-$normalized_user_type = strtolower(str_replace([' ', '_'], '', $user_type));
-
-// If not noncitizen, redirect to appropriate page
-if ($normalized_user_type !== 'noncitizen') {
-    if ($normalized_user_type === 'citizen') {
-        header("Location: citizen_dashboard.php");
-    } elseif ($normalized_user_type === 'admin') {
-        header("Location: admin_dashboard.php");
-    } else {
-        // Invalid user_type, go to login
-        header("Location: login.php");
-    }
-    exit();
+require_once 'config.php';
+if (!is_logged_in() || $_SESSION['user_type'] !== 'non_citizen') {
+    redirect('login.php');
 }
 
 $user_id = $_SESSION['user_id'];
-
-// Language handling
 if (isset($_GET['lang']) && in_array($_GET['lang'], ['fr', 'ar', 'en'])) {
     $_SESSION['language'] = $_GET['lang'];
-    $lang = $_GET['lang'];
-} else {
-    $lang = $_SESSION['language'] ?? 'fr';
+    header("Location: noncitizen_dashboard.php");
+    exit();
 }
-
-// Get user data
+$lang = $_SESSION['language'] ?? 'fr';
 $stmt = $conn->prepare("SELECT * FROM users WHERE id = ?");
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
 $user = $stmt->get_result()->fetch_assoc();
-$stmt->close();
-
-// Check if user exists
-if (!$user) {
-    session_destroy();
-    header("Location: login.php");
-    exit();
+$payment_amount = 45000; // Default for other countries
+if (strtolower($user['nationality']) === 'senegal' || strtolower($user['nationality']) === 'sénégalaise') {
+    $payment_amount = 1500;
 }
-
-// Calculate payment amount based on nationality
-$nationality = strtolower(trim($user['nationality'] ?? ''));
-$is_senegalese = false;
-
-// Check if Senegalese (multiple possible spellings)
-$senegalese_keywords = ['senegal', 'sénégal', 'sénégalaise', 'sénégalaise', 'senegalese'];
-foreach ($senegalese_keywords as $keyword) {
-    if (strpos($nationality, $keyword) !== false) {
-        $is_senegalese = true;
-        break;
-    }
-}
-
-$payment_amount = $is_senegalese ? 1500 : 45000;
 $payment_amount_formatted = number_format($payment_amount, 0, ',', ' ') . ' MRU';
 
-// The Language translations section:
+// Language translations
 $translations = [
     'en' => [
         'dashboard' => 'Resident Dashboard',
@@ -125,13 +78,13 @@ $translations = [
         'make_payment' => 'Make Payment',
         'payment_fee' => 'Residence Permit Fee',
         'pay_now' => 'Pay Now',
-        'nationality_note' => 'Fee based on your nationality:',
+        'nationality_note' => 'Fee based on your nationality: ',
         'payment_modal_title' => 'Pay Residence Permit Fee',
         'select_provider' => 'Select Mobile Money Provider',
         'payment_instructions' => 'Payment Instructions',
         'step_payment_1' => '1. Dial the payment number on your phone',
         'step_payment_2' => '2. Enter the transaction ID as reference',
-        'step_payment_3' => '3. Confirm payment of',
+        'step_payment_3' => '3. Confirm payment of ',
         'step_payment_4' => '4. Take screenshot of confirmation',
         'step_payment_5' => '5. Upload receipt below',
         'upload_receipt' => 'Upload Payment Receipt',
@@ -152,10 +105,7 @@ $translations = [
         'one_year_validity' => '• 1-year validity from approval date',
         'download_permit_card' => '• You can download your permit card',
         'renewal_available' => '• Renewal available 30 days before expiry',
-        'sample_info_note' => 'Sample information shown. Your actual permit details will appear here after approval.',
-        'welcome_message' => 'Welcome to your resident dashboard!',
-        'user_type_label' => 'User Type',
-        'nationality_label' => 'Nationality'
+        'sample_info_note' => 'Sample information shown. Your actual permit details will appear here after approval.'
     ],
     'fr' => [
         'dashboard' => 'Tableau de bord Résident',
@@ -208,13 +158,13 @@ $translations = [
         'make_payment' => 'Effectuer le paiement',
         'payment_fee' => 'Frais de permis de résidence',
         'pay_now' => 'Payer maintenant',
-        'nationality_note' => 'Frais selon votre nationalité:',
+        'nationality_note' => 'Frais selon votre nationalité: ',
         'payment_modal_title' => 'Payer les frais de permis',
         'select_provider' => 'Sélectionner un opérateur',
         'payment_instructions' => 'Instructions de paiement',
         'step_payment_1' => '1. Composez le numéro sur votre téléphone',
         'step_payment_2' => '2. Entrez l\'ID transaction comme référence',
-        'step_payment_3' => '3. Confirmez le paiement de',
+        'step_payment_3' => '3. Confirmez le paiement de ',
         'step_payment_4' => '4. Prenez une capture d\'écran',
         'step_payment_5' => '5. Téléchargez le reçu ci-dessous',
         'upload_receipt' => 'Télécharger le reçu',
@@ -235,10 +185,7 @@ $translations = [
         'one_year_validity' => '• Validité d\'1 an à partir de la date d\'approbation',
         'download_permit_card' => '• Vous pourrez télécharger votre carte de permis',
         'renewal_available' => '• Renouvellement disponible 30 jours avant expiration',
-        'sample_info_note' => 'Informations d\'exemple affichées. Vos détails réels apparaîtront هنا après الموافقة.',
-        'welcome_message' => 'Bienvenue sur votre tableau de bord résident!',
-        'user_type_label' => 'Type d\'utilisateur',
-        'nationality_label' => 'Nationalité'
+        'sample_info_note' => 'Informations d\'exemple affichées. Vos détails réels apparaîtront ici après approbation.'
     ],
     'ar' => [
         'dashboard' => 'لوحة تحكم المقيم',
@@ -291,13 +238,13 @@ $translations = [
         'make_payment' => 'دفع الرسوم',
         'payment_fee' => 'رسوم تصريح الإقامة',
         'pay_now' => 'ادفع الآن',
-        'nationality_note' => 'الرسوم حسب جنسيتك:',
+        'nationality_note' => 'الرسوم حسب جنسيتك: ',
         'payment_modal_title' => 'دفع رسوم تصريح الإقامة',
         'select_provider' => 'اختر مزود الموبايل موني',
         'payment_instructions' => 'تعليمات الدفع',
         'step_payment_1' => '1. اطلب رقم الدفع على هاتفك',
         'step_payment_2' => '2. أدخل رمز العملية كمرجع',
-        'step_payment_3' => '3. تأكيد دفع مبلغ',
+        'step_payment_3' => '3. تأكيد دفع مبلغ ',
         'step_payment_4' => '4. التقط صورة للتأكيد',
         'step_payment_5' => '5. ارفع الإيصال أدناه',
         'upload_receipt' => 'رفع إيصال الدفع',
@@ -318,17 +265,12 @@ $translations = [
         'one_year_validity' => '• صلاحية سنة واحدة من تاريخ الموافقة',
         'download_permit_card' => '• يمكنك تحميل بطاقة التصريح الخاصة بك',
         'renewal_available' => '• التجديد متاح قبل 30 يومًا من انتهاء الصلاحية',
-        'sample_info_note' => 'يتم عرض معلومات نموذجية. ستظهر تفاصيل التصريح الفعلية هنا بعد الموافقة.',
-        'welcome_message' => 'مرحبا بكم في لوحة تحكم المقيم!',
-        'user_type_label' => 'نوع المستخدم',
-        'nationality_label' => 'الجنسية'
+        'sample_info_note' => 'يتم عرض معلومات نموذجية. ستظهر تفاصيل التصريح الفعلية هنا بعد الموافقة.'
     ]
 ];
 
 $text = $translations[$lang] ?? $translations['fr'];
 $dir = $lang === 'ar' ? 'rtl' : 'ltr';
-
-// Check for residence permit
 $permit_query = $conn->prepare("SELECT * FROM residence_permits WHERE user_id = ? AND status = 'active' ORDER BY id DESC LIMIT 1");
 $permit_query->bind_param("i", $user_id);
 $permit_query->execute();
@@ -344,58 +286,6 @@ $has_active_permit = ($permit && $permit['status'] === 'active');
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo $text['dashboard']; ?> - IDTrack</title>
     <link rel="stylesheet" href="noncitizen_dashboard.css">
-    <style>
-        /* Additional styles for proper layout */
-        .status-badge {
-            display: inline-block;
-            padding: 0.35rem 0.75rem;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: 600;
-            margin-top: 10px;
-        }
-        .status-pending {
-            background: #fef3c7;
-            color: #92400e;
-        }
-        .status-active {
-            background: #d1fae5;
-            color: #065f46;
-        }
-        .amount-display {
-            text-align: center;
-            padding: 1.5rem;
-            background: #f8fafc;
-            border-radius: 10px;
-            border: 2px solid #e2e8f0;
-            margin-bottom: 1rem;
-        }
-        .amount-value {
-            font-size: 2.5rem;
-            font-weight: 700;
-            color: #CE1126;
-            margin: 10px 0;
-        }
-        .language-switch {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            display: flex;
-            gap: 10px;
-        }
-        .language-switch a {
-            padding: 5px 10px;
-            border-radius: 5px;
-            background: #f1f5f9;
-            color: #666;
-            text-decoration: none;
-            font-size: 12px;
-        }
-        .language-switch a.active {
-            background: #CE1126;
-            color: white;
-        }
-    </style>
 </head>
 <body>
     <div class="dashboard-container">
@@ -407,47 +297,61 @@ $has_active_permit = ($permit && $permit['status'] === 'active');
             
             <nav class="nav-menu">
                 <a href="#overview" class="nav-item active">
-                    📊 <span><?php echo $text['dashboard']; ?></span>
+                    <i class="fas fa-home"></i>
+                    <span><?php echo $text['dashboard']; ?></span>
                 </a>
                 <a href="#profile" class="nav-item">
-                    👤 <span><?php echo $text['profile']; ?></span>
+                    <i class="fas fa-user"></i>
+                    <span><?php echo $text['profile']; ?></span>
                 </a>
                 <a href="#residence" class="nav-item">
-                    📄 <span><?php echo $text['residence_permit']; ?></span>
+                    <i class="fas fa-passport"></i>
+                    <span><?php echo $text['residence_permit']; ?></span>
                 </a>
                 <a href="#documents" class="nav-item">
-                    📎 <span><?php echo $text['documents']; ?></span>
+                    <i class="fas fa-file-alt"></i>
+                    <span><?php echo $text['documents']; ?></span>
                 </a>
                 <a href="#apply-id" class="nav-item highlight">
-                    🆔 <span><?php echo $text['apply_id']; ?></span>
+                    <i class="fas fa-id-card"></i>
+                    <span><?php echo $text['apply_id']; ?></span>
+                </a>
+                <a href="#settings" class="nav-item">
+                    <i class="fas fa-cog"></i>
+                    <span><?php echo $text['settings']; ?></span>
                 </a>
             </nav>
             
             <div class="sidebar-footer">
                 <a href="logout.php" class="logout-btn">
-                    🚪 <span><?php echo $text['logout']; ?></span>
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span><?php echo $text['logout']; ?></span>
                 </a>
             </div>
         </aside>
-        
         <main class="main-content">
-            <div class="language-switch">
-                <a href="?lang=fr" class="<?php echo $lang === 'fr' ? 'active' : ''; ?>">FR</a>
-                <a href="?lang=ar" class="<?php echo $lang === 'ar' ? 'active' : ''; ?>">AR</a>
-                <a href="?lang=en" class="<?php echo $lang === 'en' ? 'active' : ''; ?>">EN</a>
-            </div>
-            
             <header class="header">
                 <div class="welcome">
                     <h1><?php echo $text['welcome']; ?>, <?php echo htmlspecialchars($user['full_name']); ?>!</h1>
                     <p><?php echo date('l, F j, Y'); ?></p>
                 </div>
+                <div class="header-actions">
+                    <div class="language-switch">
+                        <a href="noncitizen_dashboard.php?lang=fr" class="<?php echo $lang === 'fr' ? 'active' : ''; ?>">FR</a>
+                        <a href="noncitizen_dashboard.php?lang=ar" class="<?php echo $lang === 'ar' ? 'active' : ''; ?>">AR</a>
+                        <a href="noncitizen_dashboard.php?lang=en" class="<?php echo $lang === 'en' ? 'active' : ''; ?>">EN</a>
+                    </div>
+                    <div class="user-avatar">
+                        <i class="fas fa-user-circle"></i>
+                    </div>
+                </div>
             </header>
-            
+
+            <!-- The Dashboard Grid: -->
             <div class="dashboard-grid">
-                <div class="card info-card">
+                <div class="card info-card" id="profile">
                     <div class="card-header">
-                        <h3>👤 <?php echo $text['personal_info']; ?></h3>
+                        <h3><i class="fas fa-user"></i> <?php echo $text['personal_info']; ?></h3>
                     </div>
                     <div class="card-body">
                         <div class="info-item">
@@ -460,99 +364,322 @@ $has_active_permit = ($permit && $permit['status'] === 'active');
                         </div>
                         <div class="info-item">
                             <span class="label"><?php echo $text['phone']; ?>:</span>
-                            <span class="value"><?php echo htmlspecialchars($user['phone'] ?? 'N/A'); ?></span>
+                            <span class="value"><?php echo htmlspecialchars($user['phone']); ?></span>
                         </div>
                         <div class="info-item">
                             <span class="label"><?php echo $text['dob']; ?>:</span>
-                            <span class="value"><?php echo !empty($user['date_of_birth']) ? date('d/m/Y', strtotime($user['date_of_birth'])) : 'N/A'; ?></span>
+                            <span class="value"><?php echo date('d/m/Y', strtotime($user['date_of_birth'])); ?></span>
                         </div>
                         <div class="info-item">
                             <span class="label"><?php echo $text['nationality']; ?>:</span>
-                            <span class="value"><?php echo htmlspecialchars($user['nationality'] ?? 'N/A'); ?></span>
+                            <span class="value"><?php echo htmlspecialchars($user['nationality']); ?></span>
                         </div>
                     </div>
                 </div>
-                
-                <div class="card">
+                <?php if ($has_active_permit): ?>
+                <div class="card residence-card" id="residence">
                     <div class="card-header">
-                        <h3>🏠 <?php echo $text['residence_status']; ?></h3>
+                        <h3><i class="fas fa-passport"></i> <?php echo $text['residence_info']; ?></h3>
                     </div>
                     <div class="card-body">
-                        <p><?php echo $text['welcome_message']; ?></p>
                         <div class="info-item">
-                            <span class="label"><?php echo $text['user_type_label']; ?>:</span>
-                            <span class="value"><?php echo htmlspecialchars($user_type); ?></span>
+                            <span class="label"><?php echo $text['permit_number']; ?>:</span>
+                            <span class="value"><?php echo htmlspecialchars($permit['permit_number']); ?></span>
                         </div>
                         <div class="info-item">
-                            <span class="label"><?php echo $text['nationality_label']; ?>:</span>
-                            <span class="value"><?php echo htmlspecialchars($user['nationality'] ?? 'N/A'); ?></span>
+                            <span class="label"><?php echo $text['entry_date']; ?>:</span>
+                            <span class="value"><?php echo date('d/m/Y', strtotime($permit['entry_date'])); ?></span>
                         </div>
-                        
-                        <?php if ($has_active_permit): ?>
-                            <div class="status-badge status-active">
-                                ✅ <?php echo $text['status_active']; ?>
-                            </div>
-                        <?php else: ?>
-                            <div class="status-badge status-pending">
-                                ⏳ <?php echo $text['status_pending']; ?>
-                            </div>
+                        <div class="info-item">
+                            <span class="label"><?php echo $text['expiry_date']; ?>:</span>
+                            <?php 
+                            $permit_expiry = $permit['expiry_date'];
+                            $days_until_expiry = ceil((strtotime($permit_expiry) - time()) / 86400);
+                            ?>
+                            <span class="value"><?php echo date('d/m/Y', strtotime($permit_expiry)); ?></span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label"><?php echo $text['visa_type']; ?>:</span>
+                            <span class="value"><?php echo ucfirst($permit['visa_type']); ?></span>
+                        </div>
+                        <?php if ($days_until_expiry <= 30 && $days_until_expiry > 0): ?>
+                        <div class="info-note" style="margin-top: 1rem; padding: 0.75rem; background: rgba(254, 243, 199, 1); border-radius: 6px; font-size: 0.9rem;">
+                            <i class="fas fa-exclamation-triangle" style="color: rgba(245, 158, 11, 1);"></i>
+                            <span style="color: rgba(146, 64, 14, 1); margin-left: 0.5rem;">
+                                Your permit expires in <?php echo $days_until_expiry; ?> days. Please renew soon.
+                            </span>
+                        </div>
                         <?php endif; ?>
                     </div>
                 </div>
-            </div>
-            
-            <div class="card">
-                <div class="card-header">
-                    <h3>💰 <?php echo $text['payment_fee']; ?></h3>
+                <?php else: ?>
+                <div class="card residence-card" id="residence">
+                    <div class="card-header">
+                        <h3><i class="fas fa-clock"></i> <?php echo $text['residence_status']; ?></h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="status-section" style="margin-bottom: 1.5rem;">
+                            <div class="status-label" style="color: rgba(100, 116, 139, 1); font-weight: 600; margin-bottom: 0.5rem;">
+                                Current Status:
+                            </div>
+                            <div class="status-value" style="display: flex; align-items: center; gap: 0.5rem;">
+                                <span class="status-badge status-pending"><?php echo $text['application_pending']; ?></span>
+                                <span style="color: rgba(100, 116, 139, 1); font-size: 0.9rem;">
+                                    (Submitted on <?php echo date('d/m/Y'); ?>)
+                                </span>
+                            </div>
+                        </div>
+                            <div class="timeline-section" style="margin-bottom: 1.5rem;">
+                            <div class="timeline-label" style="color: rgba(100, 116, 139, 1); font-weight: 600; margin-bottom: 0.5rem;">
+                                <?php echo $text['processing_time']; ?>:
+                            </div>
+                            <div class="timeline-value" style="color: rgba(30, 41, 59, 1); font-weight: 500;">
+                                <?php echo $text['working_days']; ?>
+                            </div>
+                        </div>
+                            <div class="next-steps" style="padding: 1rem; background: rgba(240, 249, 255, 1); border-radius: 8px; border-left: 4px solid #3b82f6;">
+                            <div style="font-weight: 600; color: rgba(30, 64, 175, 1); margin-bottom: 0.5rem;">
+                                <i class="fas fa-arrow-right"></i> <?php echo $text['after_approval']; ?>
+                            </div>
+                            <div style="color: #475569; font-size: 0.9rem;">
+                                <?php echo $text['will_be_assigned']; ?><br>
+                                <?php echo $text['one_year_validity']; ?><br>
+                                <?php echo $text['download_permit_card']; ?><br>
+                                <?php echo $text['renewal_available']; ?>
+                            </div>
+                        </div>
+                        <div class="info-note" style="margin-top: 1rem; padding: 0.75rem; background: rgba(241, 245, 249, 1); border-radius: 6px; font-size: 0.85rem; color: #64748b;">
+                            <i class="fas fa-info-circle"></i>
+                            <span style="margin-left: 0.5rem;">
+                                <?php echo $text['sample_info_note']; ?>
+                            </span>
+                        </div>
+                    </div>
                 </div>
-                <div class="card-body">
-                    <div class="payment-info">
+                <?php endif; ?>
+                <div class="card payment-card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-money-bill-wave"></i> <?php echo $text['payment_fee']; ?></h3>
+                    </div>
+                    <div class="card-body">
                         <div class="amount-display">
                             <div class="amount-label"><?php echo $text['nationality_note']; ?></div>
                             <div class="amount-value"><?php echo $payment_amount_formatted; ?></div>
                             <div class="amount-description">
-                                <?php echo $is_senegalese ? $text['senegal_rate'] : $text['other_rate']; ?>
+                                <?php echo strtolower($user['nationality']) === 'senegal' || strtolower($user['nationality']) === 'sénégalaise' ? 
+                                    $text['senegal_rate'] : $text['other_rate']; ?>
                             </div>
-                            <div style="margin-top: 10px; color: #666; font-size: 0.9rem;">
-                                <?php echo $is_senegalese ? '🇸🇳 Vous êtes Sénégalais(e) - tarif préférentiel' : '🌍 Autre nationalité - tarif standard'; ?>
+                            <div class="transaction-id" id="transactionId"></div>
+                        </div>
+                        <button class="action-btn payment" onclick="makePayment()">
+                            <i class="fas fa-credit-card"></i>
+                            <?php echo $text['pay_now']; ?>
+                        </button>
+                        <p class="payment-amount-note">
+                            <?php echo $text['make_payment']; ?> via mobile money
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- The Payment Modal: -->
+            <div id="paymentModal" class="modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3><?php echo $text['payment_fee']; ?></h3>
+                        <span class="close-modal" onclick="closePaymentModal()">&times;</span>
+                    </div>
+                    <div class="modal-body">
+                        <form id="receiptUploadForm" action="process_payment.php" method="POST" enctype="multipart/form-data">
+                            <input type="hidden" name="transaction_id" id="paymentTransactionId" value="">
+                            <input type="hidden" name="selected_provider" id="selectedProvider" value="">
+                            <input type="hidden" name="amount" value="<?php echo $payment_amount; ?>">
+                            
+                            <div class="payment-info">
+                                <div class="amount-display">
+                                    <div class="amount-label"><?php echo $text['nationality_note']; ?></div>
+                                    <div class="amount-value"><?php echo $payment_amount_formatted; ?></div>
+                                    <div class="amount-description" id="referenceId"></div>
+                                    <div class="amount-note">
+                                        <?php echo strtolower($user['nationality']) === 'senegal' || strtolower($user['nationality']) === 'sénégalaise' ? 
+                                            $text['senegal_rate'] : $text['other_rate']; ?>
+                                    </div>
+                                </div>
+                                
+                                <h4><?php echo $text['select_provider']; ?></h4>
+                                <div class="providers-grid">
+                                    <div class="provider-option" onclick="selectProvider('bankily')">
+                                        <div class="provider-name">Bankily</div>
+                                    </div>
+                                    <div class="provider-option" onclick="selectProvider('masrivi')">
+                                        <div class="provider-name">Masrivi</div>
+                                    </div>
+                                    <div class="provider-option" onclick="selectProvider('sadad')">
+                                        <div class="provider-name">Sadad</div>
+                                    </div>
+                                    <div class="provider-option" onclick="selectProvider('click')">
+                                        <div class="provider-name">Click</div>
+                                    </div>
+                                    <div class="provider-option" onclick="selectProvider('binbank')">
+                                        <div class="provider-name">Binbank</div>
+                                    </div>
+                                    <div class="provider-option" onclick="selectProvider('moovemauritel')">
+                                        <div class="provider-name">Moove/Mauritel</div>
+                                    </div>
+                                </div>
+                                
+                                <div id="selectedProviderInfo" class="selected-provider" style="display: none;">
+                                    <h4><?php echo $lang === 'en' ? 'Payment Number:' : ($lang === 'fr' ? 'Numéro de paiement:' : 'رقم الدفع:'); ?></h4>
+                                    <div class="provider-number" id="providerNumber"></div>
+                                    <p class="provider-instruction"><?php echo $lang === 'en' ? 'Use this number to make payment via selected provider' : ($lang === 'fr' ? 'Utilisez ce numéro pour effectuer le paiement via l\'opérateur sélectionné' : 'استخدم هذا الرقم للدفع عبر المزود المحدد'); ?></p>
+                                </div>
+                                
+                                <div class="payment-instructions">
+                                    <h4><?php echo $text['payment_instructions']; ?></h4>
+                                    <ol>
+                                        <li><?php echo $text['step_payment_1']; ?></li>
+                                        <li><?php echo $text['step_payment_2']; ?>: <code id="instructionTransactionId"></code></li>
+                                        <li><?php echo $text['step_payment_3']; ?> <strong><?php echo $payment_amount_formatted; ?></strong></li>
+                                        <li><?php echo $text['step_payment_4']; ?></li>
+                                        <li><?php echo $text['step_payment_5']; ?></li>
+                                    </ol>
+                                </div>
+                                
+                                <div class="receipt-upload">
+                                    <h4><?php echo $text['upload_receipt']; ?></h4>
+                                    <div class="file-upload-area">
+                                        <input type="file" id="receiptFile" name="receipt_file" accept=".jpg,.jpeg,.png,.pdf" required>
+                                        <label for="receiptFile" class="file-label">
+                                            <i class="fas fa-cloud-upload-alt" style="font-size: 2rem; color: #64748b; margin-bottom: 1rem;"></i>
+                                            <div class="upload-text"><?php echo $lang === 'en' ? 'Click to upload receipt' : ($lang === 'fr' ? 'Cliquez pour télécharger le reçu' : 'انقر لرفع الإيصال'); ?></div>
+                                            <div class="file-size"><?php echo $lang === 'en' ? 'JPG, PNG, or PDF (max 5MB)' : ($lang === 'fr' ? 'JPG, PNG ou PDF (max 5MB)' : 'JPG، PNG، أو PDF (الحد الأقصى 5 ميغابايت)'); ?></div>
+                                            <div id="fileName"></div>
+                                        </label>
+                                    </div>
+                                    
+                                    <button type="submit" class="btn-upload-receipt">
+                                        <i class="fas fa-paper-plane"></i>
+                                        <?php echo $text['submit_receipt']; ?>
+                                    </button>
+                                </div>
+                                
+                                <div class="payment-notes">
+                                    <p><strong><?php echo $text['payment_notes']; ?></strong></p>
+                                    <p><?php echo $text['note_1']; ?></p>
+                                    <p><?php echo $text['note_2']; ?></p>
+                                    <p><?php echo $text['note_3']; ?></p>
+                                    <p><?php echo $text['note_4']; ?></p>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- The National ID Application Section: -->
+            <div class="card apply-id-card" id="apply-id">
+                <div class="card-header">
+                    <h3><i class="fas fa-id-card"></i> <?php echo $text['apply_national_id']; ?></h3>
+                </div>
+                <div class="card-body">
+                    <div class="apply-grid">
+                        <div class="apply-info">
+                            <h4><?php echo $text['requirements']; ?></h4>
+                            <ul class="requirements-list">
+                                <li><?php echo $text['req_1']; ?></li>
+                                <li><?php echo $text['req_2']; ?></li>
+                                <li><?php echo $text['req_3']; ?></li>
+                                <li><?php echo $text['req_4']; ?></li>
+                                <li><?php echo $text['req_5']; ?></li>
+                            </ul>
+                            
+                            <h4 style="margin-top: 2rem"><?php echo $text['steps_title']; ?></h4>
+                            <div class="steps-list">
+                                <div class="step-item">
+                                    <span class="step-number">1</span>
+                                    <p><?php echo $text['step_1']; ?></p>
+                                </div>
+                                <div class="step-item">
+                                    <span class="step-number">2</span>
+                                    <p><?php echo $text['step_2']; ?></p>
+                                </div>
+                                <div class="step-item">
+                                    <span class="step-number">3</span>
+                                    <p><?php echo $text['step_3']; ?></p>
+                                </div>
+                                <div class="step-item">
+                                    <span class="step-number">4</span>
+                                    <p><?php echo $text['step_4']; ?></p>
+                                </div>
                             </div>
                         </div>
-                        <button onclick="makePayment()" class="action-btn payment">
-                            💳 <?php echo $text['pay_now']; ?>
+                        
+                        <div class="apply-form">
+                            <h4><?php echo $text['document_upload']; ?></h4>
+                            <form id="nationalIdForm" enctype="multipart/form-data">
+                                <div class="file-input-wrapper">
+                                    <label>
+                                        <i class="fas fa-passport"></i>
+                                        <?php echo $text['upload_passport']; ?>
+                                    </label>
+                                    <input type="file" name="passport" accept=".pdf,.jpg,.jpeg,.png" required>
+                                </div>
+                                
+                                <div class="file-input-wrapper">
+                                    <label>
+                                        <i class="fas fa-camera"></i>
+                                        <?php echo $text['upload_photo']; ?>
+                                    </label>
+                                    <input type="file" name="photo" accept=".jpg,.jpeg,.png" required>
+                                </div>
+                                
+                                <div class="file-input-wrapper">
+                                    <label>
+                                        <i class="fas fa-home"></i>
+                                        <?php echo $text['upload_proof']; ?>
+                                    </label>
+                                    <input type="file" name="proof" accept=".pdf,.jpg,.jpeg,.png" required>
+                                </div>
+                                
+                                <button type="submit" class="action-btn primary">
+                                    <i class="fas fa-paper-plane"></i>
+                                    <?php echo $text['apply_now']; ?>
+                                </button>
+                            </form>
+                            
+                            <div class="application-status-box">
+                                <h4><?php echo $text['application_status']; ?></h4>
+                                <div class="status-message">
+                                    <i class="fas fa-info-circle"></i>
+                                    <?php echo $text['no_application']; ?>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- The Quick Actions Section: -->
+            <div class="card actions-card">
+                <div class="card-header">
+                    <h3><i class="fas fa-bolt"></i> <?php echo $text['quick_actions']; ?></h3>
+                </div>
+                <div class="card-body">
+                    <div class="actions-grid">
+                        <button class="action-btn secondary" onclick="updateProfile()">
+                            <i class="fas fa-edit"></i>
+                            <?php echo $text['update_profile']; ?>
+                        </button>
+                        <button class="action-btn tertiary" onclick="extendStay()">
+                            <i class="fas fa-calendar-plus"></i>
+                            <?php echo $text['extend_stay']; ?>
                         </button>
                     </div>
                 </div>
             </div>
-            
-            <div style="padding: 20px; text-align: center; background: #f8fafc; border-radius: 10px; margin-top: 20px;">
-                <p>✅ Tableau de bord résident chargé avec succès!</p>
-                <a href="logout.php" class="logout-btn" style="display: inline-block; margin-top: 10px; padding: 10px 20px;"><?php echo $text['logout']; ?></a>
-            </div>
         </main>
     </div>
-    
-    <!-- Payment Modal -->
-    <div id="paymentModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>💰 <?php echo $text['payment_modal_title']; ?></h3>
-                <span class="close-modal" onclick="closePaymentModal()">×</span>
-            </div>
-            <div class="modal-body">
-                <p>Cette fonctionnalité sera implémentée prochainement.</p>
-            </div>
-        </div>
-    </div>
-    
     <script src="noncitizen_dashboard.js"></script>
-    <script>
-    function makePayment() {
-        alert('La fonction de paiement sera disponible bientôt.');
-    }
-    
-    function closePaymentModal() {
-        document.getElementById('paymentModal').style.display = 'none';
-    }
-    </script>
 </body>
 </html>
+[file content end]

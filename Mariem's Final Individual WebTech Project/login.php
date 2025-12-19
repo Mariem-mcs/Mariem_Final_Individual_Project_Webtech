@@ -9,11 +9,6 @@ require_once 'config.php';
 // Now start the secure session manually
 start_secure_session();
 
-// DEBUG: Show what's happening
-echo "<!-- DEBUG: Session ID = " . session_id() . " -->\n";
-echo "<!-- DEBUG: Session data before checks = " . json_encode($_SESSION) . " -->\n";
-echo "<!-- DEBUG: is_logged_in() = " . (is_logged_in() ? 'TRUE' : 'FALSE') . " -->\n";
-
 // Handle logout
 if (isset($_GET['logout'])) {
     force_logout();
@@ -21,30 +16,18 @@ if (isset($_GET['logout'])) {
     exit();
 }
 
-// Check if already logged in - SIMPLIFY THIS
+// Check if already logged in
 if (is_logged_in()) {
-    echo "<!-- DEBUG: User is logged in, checking user_type -->\n";
     $user_type = $_SESSION['user_type'] ?? null;
-    echo "<!-- DEBUG: user_type = " . ($user_type ?? 'NULL') . " -->\n";
     
-    // Instead of redirecting immediately, show debug info
-    echo "<div style='background: yellow; padding: 10px; margin: 10px;'>";
-    echo "<strong>DEBUG: Would redirect to:</strong><br>";
     if ($user_type === 'admin') {
-        echo "admin_dashboard.php<br>";
-        // header("Location: admin_dashboard.php");
+        header("Location: admin_dashboard.php");
     } elseif ($user_type === 'citizen') {
-        echo "citizen_dashboard.php<br>";
-        // header("Location: citizen_dashboard.php");
+        header("Location: citizen_dashboard.php");
     } else {
-        echo "noncitizen_dashboard.php<br>";
-        // header("Location: noncitizen_dashboard.php");
+        header("Location: noncitizen_dashboard.php");
     }
-    echo "<a href='?logout=1'>Logout first</a>";
-    echo "</div>";
-    
-    // Temporarily comment out the exit to see the login form
-    // exit();
+    exit();
 }
 
 // Language handling
@@ -146,7 +129,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $_SESSION['LAST_ACTIVITY'] = time();
                         
                         log_activity($user['id'], 'login', 'Admin logged in');
-                        echo "<!-- DEBUG: Admin login successful, redirecting -->\n";
                         header("Location: admin_dashboard.php");
                         exit();
                     }
@@ -160,8 +142,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $_SESSION['LAST_ACTIVITY'] = time();
                     
                     log_activity($user['id'], 'login', 'User logged in');
-                    
-                    echo "<!-- DEBUG: User login successful, user_type = " . $user['user_type'] . " -->\n";
                     
                     if ($user['user_type'] === 'citizen') {
                         header("Location: citizen_dashboard.php");

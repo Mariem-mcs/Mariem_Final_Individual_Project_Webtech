@@ -312,7 +312,7 @@ $has_active_permit = ($permit && $permit['status'] === 'active');
     <div id="paymentModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>💰 <?php echo $text['payment_modal_title'] ?? 'Payer les frais de permis'; ?></h3>
+                <h3>💰 Payer les frais de permis</h3>
                 <span class="close-modal" onclick="closePaymentModal()">×</span>
             </div>
             <div class="modal-body">

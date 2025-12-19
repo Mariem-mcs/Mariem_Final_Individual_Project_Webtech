@@ -3,33 +3,31 @@
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-// Start session
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-
-// DEBUG: Show session info (comment out after fixing)
-echo "<!-- DEBUG: Session ID = " . session_id() . " -->\n";
-echo "<!-- DEBUG: Session data = " . json_encode($_SESSION) . " -->\n";
-
-// Include config
+// Include config FIRST (before any session)
 require_once 'config.php';
 
-// Simple check - no complex function calls
-if (!isset($_SESSION['user_id'])) {
-    echo "<!-- DEBUG: No user_id in session, redirecting to login -->\n";
+// Start session using your config function
+start_secure_session();
+
+// DEBUG: Show session info
+echo "<!-- DEBUG: Session ID = " . session_id() . " -->\n";
+echo "<!-- DEBUG: Session data = " . json_encode($_SESSION) . " -->\n";
+echo "<!-- DEBUG: is_logged_in() = " . (is_logged_in() ? 'TRUE' : 'FALSE') . " -->\n";
+
+// Check if user is logged in using the function from config.php
+if (!is_logged_in()) {
+    echo "<!-- DEBUG: User not logged in, redirecting to login -->\n";
     header("Location: login.php");
     exit();
 }
 
-// Check user type - accept both formats
+// Check user type
 $user_type = $_SESSION['user_type'] ?? '';
-// Debug output
 echo "<!-- DEBUG: user_type = '$user_type' -->\n";
 
 // Accept both 'noncitizen' and 'non_citizen'
 if ($user_type !== 'noncitizen' && $user_type !== 'non_citizen') {
-    echo "<!-- DEBUG: user_type = '$user_type', not noncitizen -->\n";
+    echo "<!-- DEBUG: Wrong user type, redirecting -->\n";
     // If not noncitizen, redirect to appropriate page
     if ($user_type === 'citizen') {
         header("Location: citizen_dashboard.php");
@@ -46,13 +44,15 @@ echo "<!-- DEBUG: User is noncitizen, continuing... -->\n";
 
 $user_id = $_SESSION['user_id'];
 
-// Language handling
+// Language handling - FIXED REDIRECT LOOP
 if (isset($_GET['lang']) && in_array($_GET['lang'], ['fr', 'ar', 'en'])) {
     $_SESSION['language'] = $_GET['lang'];
-    header("Location: noncitizen_dashboard.php");
-    exit();
+    // Remove the redirect that causes the loop
+    // Just set the session and continue
+    $lang = $_GET['lang'];
+} else {
+    $lang = $_SESSION['language'] ?? 'fr';
 }
-$lang = $_SESSION['language'] ?? 'fr';
 
 // Get user data
 $stmt = $conn->prepare("SELECT * FROM users WHERE id = ?");
@@ -235,7 +235,7 @@ $translations = [
         'one_year_validity' => '• Validité d\'1 an à partir de la date d\'approbation',
         'download_permit_card' => '• Vous pourrez télécharger votre carte de permis',
         'renewal_available' => '• Renouvellement disponible 30 jours avant expiration',
-        'sample_info_note' => 'Informations d\'exemple affichées. Vos détails réels apparaîtront ici après approbation.'
+        'sample_info_note' => 'Informations d\'exemple affichées. Vos détails réels apparaîtront هنا بعد الموافقة.'
     ],
     'ar' => [
         'dashboard' => 'لوحة تحكم المقيم',
@@ -331,8 +331,7 @@ $permit = $permit_result->fetch_assoc();
 
 $has_active_permit = ($permit && $permit['status'] === 'active');
 
-// REMOVE THE DEBUG COMMENTS FROM THE HTML OUTPUT
-// Continue with your HTML as before...
+// Continue with HTML...
 ?>
 <!DOCTYPE html>
 <html lang="<?php echo $lang; ?>" dir="<?php echo $dir; ?>">
@@ -340,30 +339,10 @@ $has_active_permit = ($permit && $permit['status'] === 'active');
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo $text['dashboard']; ?> - IDTrack</title>
-    <!-- Use citizen dashboard CSS or create your own -->
-    <link rel="stylesheet" href="citizen_dashboard.css">
-    <style>
-        /* Add any noncitizen-specific styles here */
-        .highlight {
-            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%) !important;
-        }
-        .status-pending {
-            background: rgba(241, 196, 15, 0.15);
-            color: #92400e;
-            padding: 0.35rem 0.75rem;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: 600;
-            display: inline-block;
-        }
-    </style>
+    <link rel="stylesheet" href="noncitizen_dashboard.css">
 </head>
 <body>
     <div class="dashboard-container">
-        <!-- Continue with your HTML from line ~340 onward -->
-        <!-- Your existing HTML code for the dashboard -->
-        
-        <!-- I'll show you where to continue - from your original file around line 340: -->
         <aside class="sidebar">
             <div class="logo">
                 <img src="authentifactionAuthorizer.png" alt="Logo">
@@ -396,13 +375,6 @@ $has_active_permit = ($permit && $permit['status'] === 'active');
         </aside>
         
         <main class="main-content">
-            <!-- Continue with the rest of your HTML from the original file -->
-            <!-- Copy everything from line ~360 to the end of your original file -->
-            
-            <!-- IMPORTANT: Copy the rest of your HTML from the original noncitizen_dashboard.php -->
-            <!-- Starting from around line 360 to the end -->
-            
-            <!-- For now, I'll show a simplified version to test -->
             <header class="header">
                 <div class="welcome">
                     <h1><?php echo $text['welcome']; ?>, <?php echo htmlspecialchars($user['full_name']); ?>!</h1>
@@ -444,18 +416,65 @@ $has_active_permit = ($permit && $permit['status'] === 'active');
                         <h3>🏠 <?php echo $text['residence_status']; ?></h3>
                     </div>
                     <div class="card-body">
-                        <p>Welcome to your noncitizen dashboard!</p>
+                        <p>Welcome to your resident dashboard!</p>
                         <p>Your user type: <strong><?php echo $user_type; ?></strong></p>
                         <p>Your nationality: <strong><?php echo htmlspecialchars($user['nationality']); ?></strong></p>
+                        
+                        <?php if ($has_active_permit): ?>
+                            <div class="status-active" style="background: #d1fae5; color: #065f46; padding: 10px; border-radius: 8px; margin-top: 10px;">
+                                ✅ <?php echo $text['status_active']; ?>
+                            </div>
+                        <?php else: ?>
+                            <div class="status-pending" style="background: #fef3c7; color: #92400e; padding: 10px; border-radius: 8px; margin-top: 10px;">
+                                ⏳ <?php echo $text['status_pending']; ?>
+                            </div>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>
             
-            <div style="padding: 20px; text-align: center;">
-                <p>✅ Noncitizen dashboard loaded successfully!</p>
-                <a href="logout.php" class="logout-btn">Logout</a>
+            <div class="card">
+                <div class="card-header">
+                    <h3>💰 <?php echo $text['payment_fee']; ?></h3>
+                </div>
+                <div class="card-body">
+                    <div class="payment-info">
+                        <div class="amount-display">
+                            <div class="amount-label"><?php echo $text['nationality_note']; ?></div>
+                            <div class="amount-value"><?php echo $payment_amount_formatted; ?></div>
+                            <div class="amount-description">
+                                <?php echo strtolower($user['nationality']) === 'senegal' || strtolower($user['nationality']) === 'sénégalaise' ? $text['senegal_rate'] : $text['other_rate']; ?>
+                            </div>
+                        </div>
+                        <button onclick="makePayment()" class="action-btn payment">
+                            💳 <?php echo $text['pay_now']; ?>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="padding: 20px; text-align: center; background: #f8fafc; border-radius: 10px; margin-top: 20px;">
+                <p>✅ Non-citizen/resident dashboard loaded successfully!</p>
+                <p style="color: #666; font-size: 0.9rem;">Debug: User type is "<?php echo $user_type; ?>"</p>
+                <a href="logout.php" class="logout-btn" style="display: inline-block; margin-top: 10px; padding: 10px 20px;">Logout</a>
             </div>
         </main>
     </div>
+    
+    <!-- Payment Modal -->
+    <div id="paymentModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>💰 <?php echo $text['payment_modal_title']; ?></h3>
+                <span class="close-modal" onclick="closePaymentModal()">×</span>
+            </div>
+            <div class="modal-body">
+                <!-- Payment content here -->
+                <p>Payment feature will be implemented here.</p>
+            </div>
+        </div>
+    </div>
+    
+    <script src="noncitizen_dashboard.js"></script>
 </body>
 </html>

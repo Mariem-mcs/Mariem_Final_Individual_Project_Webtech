@@ -1,3 +1,4 @@
+// Your provided JS file - keep it exactly as you provided
 // Utility function to get element by ID
 function $(id) {
     return document.getElementById(id);

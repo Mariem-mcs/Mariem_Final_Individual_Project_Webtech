@@ -9,6 +9,10 @@ require_once 'config.php';
 // Now start the secure session manually
 start_secure_session();
 
+// TEMPORARY DEBUG: Show session info
+echo "<!-- SESSION ID: " . session_id() . " -->";
+echo "<!-- SESSION DATA: " . print_r($_SESSION, true) . " -->";
+
 // Handle logout
 if (isset($_GET['logout'])) {
     force_logout();
@@ -16,20 +20,40 @@ if (isset($_GET['logout'])) {
     exit();
 }
 
-// Check if already logged in
+// Check if already logged in - WITH DEBUG
 if (is_logged_in()) {
+    echo "<!-- DEBUG: User is logged in according to is_logged_in() -->";
+    echo "<!-- DEBUG: user_type = " . ($_SESSION['user_type'] ?? 'NULL') . " -->";
+    
     $user_type = $_SESSION['user_type'] ?? null;
     
+    // TEMPORARILY COMMENT OUT REDIRECTS TO DEBUG
+    // if ($user_type === 'admin') {
+    //     header("Location: admin_dashboard.php");
+    // } elseif ($user_type === 'citizen') {
+    //     header("Location: citizen_dashboard.php");
+    // } else {
+    //     header("Location: noncitizen_dashboard.php");
+    // }
+    // exit();
+    
+    // Show debug info instead of redirecting
+    echo "<div style='background: #f0f0f0; padding: 10px; margin: 10px; border: 1px solid #ccc;'>";
+    echo "<h3>Debug Info (Redirects Temporarily Disabled)</h3>";
+    echo "<p>User is logged in. Would redirect to: ";
     if ($user_type === 'admin') {
-        header("Location: admin_dashboard.php");
+        echo "admin_dashboard.php";
     } elseif ($user_type === 'citizen') {
-        header("Location: citizen_dashboard.php");
+        echo "citizen_dashboard.php";
     } else {
-        header("Location: noncitizen_dashboard.php");
+        echo "noncitizen_dashboard.php";
     }
-    exit();
+    echo "</p>";
+    echo "<p><a href='?logout=1'>Click here to logout</a></p>";
+    echo "</div>";
 }
 
+// Rest of the file remains the same...
 // Language handling
 $lang = 'fr'; // Default
 if (isset($_GET['lang']) && in_array($_GET['lang'], ['fr', 'ar', 'en'])) {

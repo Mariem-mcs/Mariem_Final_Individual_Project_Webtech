@@ -9,20 +9,31 @@ require_once 'config.php';
 // Now start the secure session manually
 start_secure_session();
 
-// FORCE LOGOUT - Clear all session data
-$_SESSION = array();
-
-// Destroy the session cookie
-if (isset($_COOKIE[session_name()])) {
-    setcookie(session_name(), '', time() - 42000, '/');
+// Handle logout
+if (isset($_GET['logout'])) {
+    force_logout();
+    header("Location: login.php");
+    exit();
 }
 
-// Destroy the session
-session_destroy();
-
-// Start fresh session
-session_start();
-$_SESSION = array();
+// Check if already logged in - but don't force logout
+if (is_logged_in()) {
+    $user_type = $_SESSION['user_type'] ?? null;
+    
+    // DEBUG: Show where we would redirect
+    echo "<!-- DEBUG: User is logged in, user_type = " . ($user_type ?? 'NULL') . " -->";
+    
+    if ($user_type === 'admin') {
+        header("Location: admin_dashboard.php");
+        exit();
+    } elseif ($user_type === 'citizen') {
+        header("Location: citizen_dashboard.php");
+        exit();
+    } else {
+        header("Location: noncitizen_dashboard.php");
+        exit();
+    }
+}
 
 // Language handling
 $lang = 'fr'; // Default
@@ -123,6 +134,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $_SESSION['LAST_ACTIVITY'] = time();
                         
                         log_activity($user['id'], 'login', 'Admin logged in');
+                        
+                        echo "<!-- DEBUG: Admin login successful, redirecting to admin_dashboard.php -->";
                         header("Location: admin_dashboard.php");
                         exit();
                     }
@@ -136,6 +149,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $_SESSION['LAST_ACTIVITY'] = time();
                     
                     log_activity($user['id'], 'login', 'User logged in');
+                    
+                    echo "<!-- DEBUG: User login successful, user_type = " . $user['user_type'] . " -->";
                     
                     if ($user['user_type'] === 'citizen') {
                         header("Location: citizen_dashboard.php");
@@ -164,147 +179,152 @@ $dir = $lang === 'ar' ? 'rtl' : 'ltr';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo $t['title']; ?> - IDTrack</title>
-    <link rel="stylesheet" href="login.css">
+    <link rel="stylesheet" href="register.css">
     <style>
-        /* Minimal inline CSS in case external CSS fails */
-        body { 
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-            font-family: Arial, sans-serif;
-            margin: 0;
-        }
+        /* Additional styles specific to login page */
         .login-box {
             background: white;
+            max-width: 450px;
+            width: 100%;
+            padding: 3rem;
             border-radius: 20px;
-            padding: 40px;
-            max-width: 400px;
-            width: 100%;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            margin: 20px auto;
         }
-        .logo-section h1 {
-            color: #333;
-            font-size: 28px;
-            margin-bottom: 8px;
-        }
-        .logo-section p {
-            color: #666;
-            margin-bottom: 25px;
-        }
-        .form-group {
-            margin-bottom: 20px;
-            text-align: left;
-        }
-        .form-group label {
-            display: block;
-            margin-bottom: 5px;
-            color: #333;
-        }
-        .form-group input {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #e0e0e0;
-            border-radius: 10px;
-            font-size: 14px;
-        }
-        .form-footer {
-            text-align: right;
-            margin-bottom: 20px;
-        }
-        .forget-password-link {
-            color: #667eea;
-            text-decoration: none;
-            font-size: 13px;
-        }
+        
         .btn-login {
             width: 100%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 1rem;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 1rem;
+            background: #006233;
             color: white;
             border: none;
-            padding: 14px;
-            border-radius: 10px;
-            font-size: 16px;
-            cursor: pointer;
-            margin-bottom: 25px;
         }
-        .divider {
-            position: relative;
-            margin: 25px 0;
+        
+        .btn-login:hover {
+            background: #004d26;
+        }
+        
+        .form-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 1rem 0;
+        }
+        
+        .forget-password-link {
+            color: #006233;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+        
+        .forget-password-link:hover {
+            text-decoration: underline;
+        }
+        
+        .register-link {
             text-align: center;
+            margin: 1rem 0;
         }
-        .divider span {
-            background: white;
-            padding: 0 15px;
+        
+        .register-link a {
+            color: #006233;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 1rem;
+        }
+        
+        .register-link a:hover {
+            text-decoration: underline;
+        }
+        
+        .back-home {
+            text-align: center;
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid #e0e0e0;
+        }
+        
+        .back-home a {
             color: #666;
-            font-size: 13px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: normal;
         }
+        
+        .back-home a:hover {
+            color: #006233;
+            text-decoration: underline;
+        }
+        
+        .divider {
+            text-align: center;
+            margin: 1.5rem 0;
+            position: relative;
+            color: #666;
+        }
+        
         .divider::before {
             content: '';
             position: absolute;
-            top: 50%;
             left: 0;
-            right: 0;
+            top: 50%;
+            width: 100%;
             height: 1px;
             background: #e0e0e0;
         }
-        .register-link, .back-home {
-            margin: 10px 0;
+        
+        .divider span {
+            background: white;
+            padding: 0 1rem;
+            position: relative;
+            font-size: 0.9rem;
         }
-        .register-link a, .back-home a {
-            color: #667eea;
-            text-decoration: none;
+        
+        /* RTL adjustments */
+        [dir="rtl"] .form-group {
+            text-align: right;
         }
-        .language-switch {
-            display: flex;
-            justify-content: center;
-            gap: 15px;
-            margin-top: 25px;
+        
+        [dir="rtl"] .form-footer {
+            flex-direction: row-reverse;
         }
-        .language-switch a {
-            color: #666;
-            text-decoration: none;
-            padding: 5px 10px;
-            border-radius: 5px;
-        }
-        .language-switch a.active {
-            background: #667eea;
-            color: white;
-        }
-        .alert-error {
-            background: #fee;
-            color: #c33;
-            padding: 12px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            border: 1px solid #fcc;
+        
+        [dir="rtl"] .language-switch {
+            direction: ltr;
         }
     </style>
 </head>
 <body>
     <div class="login-box">
         <div class="logo-section">
-            <img src="authentifactionAuthorizer.png" alt="Logo" style="width: 80px; height: 80px; margin-bottom: 15px;">
+            <img src="authentifactionAuthorizer.png" alt="Logo">
             <h1><?php echo $t['title']; ?></h1>
             <p><?php echo $t['subtitle']; ?></p>
         </div>
 
         <?php if ($error): ?>
-            <div class="alert-error"><?php echo htmlspecialchars($error); ?></div>
+            <div class="alert alert-error"><?php echo htmlspecialchars($error); ?></div>
         <?php endif; ?>
 
         <form method="POST" autocomplete="off"> 
             <div class="form-group">
-                <label><?php echo $t['email']; ?></label>
+                <label><?php echo $t['email']; ?> *</label>
                 <input type="email" name="email" placeholder="<?php echo $t['email_placeholder']; ?>" required 
                         value="<?php echo isset($_POST['email']) ? htmlspecialchars($_POST['email']) : ''; ?>"
                         autocomplete="off">
             </div>
 
             <div class="form-group">
-                <label><?php echo $t['password']; ?></label>
+                <label><?php echo $t['password']; ?> *</label>
                 <input type="password" name="password" placeholder="<?php echo $t['password_placeholder']; ?>" required
                        autocomplete="off">
             </div>
@@ -314,6 +334,7 @@ $dir = $lang === 'ar' ? 'rtl' : 'ltr';
                     <?php echo $t['forget_password']; ?>
                 </a>
             </div>
+            
             <button type="submit" class="btn-login"><?php echo $t['login_btn']; ?></button>
         </form>
 

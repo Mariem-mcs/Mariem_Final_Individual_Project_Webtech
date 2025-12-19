@@ -1,250 +1,275 @@
 <?php
-// Enable error reporting
+// Enable ALL errors
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-// Start session
-session_start();
+// Include config FIRST (before any session)
 require_once 'config.php';
 
-// FIX 1: Check for user_type instead of role, and use header() instead of redirect()
-if (!isset($_SESSION['user_id']) || ($_SESSION['user_type'] ?? '') !== 'citizen') {
+// Start session using your config function
+start_secure_session();
+
+// Check if user is logged in
+if (!is_logged_in()) {
     header("Location: login.php");
     exit();
 }
 
-if (isset($_GET['lang']) && in_array($_GET['lang'], ['fr', 'ar', 'en'])) {
-    $_SESSION['language'] = $_GET['lang'];
+// Check user type - normalize different formats
+$user_type = $_SESSION['user_type'] ?? '';
+$normalized_user_type = strtolower(str_replace([' ', '_'], '', $user_type));
+
+// If not noncitizen, redirect to appropriate page
+if ($normalized_user_type !== 'noncitizen') {
+    if ($normalized_user_type === 'citizen') {
+        header("Location: citizen_dashboard.php");
+    } elseif ($normalized_user_type === 'admin') {
+        header("Location: admin_dashboard.php");
+    } else {
+        header("Location: login.php");
+    }
+    exit();
 }
 
-$lang = $_SESSION['language'] ?? 'fr';
 $user_id = $_SESSION['user_id'];
 
-// Get the user data to proceed:
+// Handle document upload
+$upload_message = '';
+$upload_success = false;
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_document'])) {
+    $document_type = $_POST['document_type'] ?? '';
+    $allowed_types = ['passport', 'photo', 'proof_of_address', 'police_certificate'];
+    
+    if (in_array($document_type, $allowed_types) && isset($_FILES['document_file'])) {
+        $file = $_FILES['document_file'];
+        
+        // Check for errors
+        if ($file['error'] === UPLOAD_ERR_OK) {
+            $allowed_extensions = ['jpg', 'jpeg', 'png', 'pdf'];
+            $file_name = $file['name'];
+            $file_ext = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
+            
+            if (in_array($file_ext, $allowed_extensions)) {
+                $max_size = 5 * 1024 * 1024; // 5MB
+                
+                if ($file['size'] <= $max_size) {
+                    // Create uploads directory if it doesn't exist
+                    $upload_dir = 'uploads/documents/';
+                    if (!is_dir($upload_dir)) {
+                        mkdir($upload_dir, 0777, true);
+                    }
+                    
+                    // Generate unique filename
+                    $new_filename = 'doc_' . $user_id . '_' . time() . '_' . $document_type . '.' . $file_ext;
+                    $destination = $upload_dir . $new_filename;
+                    
+                    if (move_uploaded_file($file['tmp_name'], $destination)) {
+                        // Save to database
+                        $stmt = $conn->prepare("INSERT INTO user_documents (user_id, document_type, file_name, file_path, uploaded_at) VALUES (?, ?, ?, ?, NOW())");
+                        $stmt->bind_param("isss", $user_id, $document_type, $file_name, $destination);
+                        
+                        if ($stmt->execute()) {
+                            $upload_message = "Document uploaded successfully!";
+                            $upload_success = true;
+                        } else {
+                            $upload_message = "Error saving to database.";
+                        }
+                        $stmt->close();
+                    } else {
+                        $upload_message = "Error moving uploaded file.";
+                    }
+                } else {
+                    $upload_message = "File size must be less than 5MB.";
+                }
+            } else {
+                $upload_message = "Only JPG, PNG, and PDF files are allowed.";
+            }
+        } else {
+            $upload_message = "Error uploading file. Error code: " . $file['error'];
+        }
+    } else {
+        $upload_message = "Invalid document type or no file selected.";
+    }
+}
+
+// Handle receipt upload
+$receipt_message = '';
+$receipt_success = false;
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_receipt'])) {
+    $transaction_id = $_POST['transaction_id'] ?? '';
+    $payment_provider = $_POST['payment_provider'] ?? '';
+    
+    if (!empty($transaction_id) && !empty($payment_provider) && isset($_FILES['receipt_file'])) {
+        $file = $_FILES['receipt_file'];
+        
+        if ($file['error'] === UPLOAD_ERR_OK) {
+            $allowed_extensions = ['jpg', 'jpeg', 'png', 'pdf'];
+            $file_name = $file['name'];
+            $file_ext = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
+            
+            if (in_array($file_ext, $allowed_extensions)) {
+                $max_size = 5 * 1024 * 1024; // 5MB
+                
+                if ($file['size'] <= $max_size) {
+                    // Create receipts directory if it doesn't exist
+                    $upload_dir = 'uploads/receipts/';
+                    if (!is_dir($upload_dir)) {
+                        mkdir($upload_dir, 0777, true);
+                    }
+                    
+                    // Generate unique filename
+                    $new_filename = 'receipt_' . $user_id . '_' . time() . '.' . $file_ext;
+                    $destination = $upload_dir . $new_filename;
+                    
+                    if (move_uploaded_file($file['tmp_name'], $destination)) {
+                        // Save to database
+                        $stmt = $conn->prepare("INSERT INTO payments (user_id, transaction_id, provider, receipt_path, amount, status, created_at) VALUES (?, ?, ?, ?, ?, 'pending', NOW())");
+                        $stmt->bind_param("isssi", $user_id, $transaction_id, $payment_provider, $destination, $payment_amount);
+                        
+                        if ($stmt->execute()) {
+                            $receipt_message = "Receipt uploaded successfully! Payment will be verified within 24-48 hours.";
+                            $receipt_success = true;
+                        } else {
+                            $receipt_message = "Error saving payment to database.";
+                        }
+                        $stmt->close();
+                    } else {
+                        $receipt_message = "Error moving uploaded file.";
+                    }
+                } else {
+                    $receipt_message = "File size must be less than 5MB.";
+                }
+            } else {
+                $receipt_message = "Only JPG, PNG, and PDF files are allowed.";
+            }
+        } else {
+            $receipt_message = "Error uploading file.";
+        }
+    } else {
+        $receipt_message = "Please fill all required fields and select a file.";
+    }
+}
+
+// Language handling
+if (isset($_GET['lang']) && in_array($_GET['lang'], ['fr', 'ar', 'en'])) {
+    $_SESSION['language'] = $_GET['lang'];
+    $lang = $_GET['lang'];
+} else {
+    $lang = $_SESSION['language'] ?? 'fr';
+}
+
+// Get user data
 $stmt = $conn->prepare("SELECT * FROM users WHERE id = ?");
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
 $user = $stmt->get_result()->fetch_assoc();
 $stmt->close();
 
-// FIX 2: Add additional check to ensure user is citizen
-if (!$user || $user['user_type'] !== 'citizen') {
-    header("Location: login.php?error=not_citizen");
+// Check if user exists
+if (!$user) {
+    session_destroy();
+    header("Location: login.php");
     exit();
 }
 
-// Rest of your code remains the same...
-$applications = [];
-$result = $conn->query("
-    SELECT * FROM applications 
-    WHERE user_id = $user_id 
-    ORDER BY created_at DESC 
-    LIMIT 5
-");
-while ($row = $result->fetch_assoc()) {
-    $applications[] = $row;
-}
+// Calculate payment amount based on nationality
+$nationality = strtolower(trim($user['nationality'] ?? ''));
+$is_senegalese = false;
 
-$documents = [];
-$result = $conn->query("
-    SELECT d.*, a.application_type 
-    FROM documents d
-    LEFT JOIN applications a ON d.application_id = a.id
-    WHERE a.user_id = $user_id 
-    ORDER BY d.uploaded_at DESC
-");
-while ($row = $result->fetch_assoc()) {
-    $documents[] = $row;
-}
-
-$has_pending_application = $conn->query("
-    SELECT COUNT(*) as count FROM applications 
-    WHERE user_id = $user_id AND status IN ('pending', 'under_review')
-")->fetch_assoc()['count'] > 0;
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (isset($_POST['apply_new'])) {
-        $application_type = $_POST['application_type'];
-        $notes = $_POST['notes'] ?? '';
-        
-        $stmt = $conn->prepare("
-            INSERT INTO applications (user_id, application_type, status, notes) 
-            VALUES (?, ?, 'pending', ?)
-        ");
-        $stmt->bind_param("iss", $user_id, $application_type, $notes);
-        
-        if ($stmt->execute()) {
-            $application_id = $stmt->insert_id;
-            log_activity($user_id, 'application_submitted', "Submitted $application_type application");
-            $success_message = "Application submitted successfully! Application ID: #$application_id";
-        }
-        $stmt->close();
+// Check if Senegalese
+$senegalese_keywords = ['senegal', 'sénégal', 'sénégalaise', 'senegalese'];
+foreach ($senegalese_keywords as $keyword) {
+    if (strpos($nationality, $keyword) !== false) {
+        $is_senegalese = true;
+        break;
     }
 }
 
-// The Language translations section with added no_documents key:
+$payment_amount = $is_senegalese ? 1500 : 45000;
+$payment_amount_formatted = number_format($payment_amount, 0, ',', ' ') . ' MRU';
+
+// Get user documents
+$documents_stmt = $conn->prepare("SELECT * FROM user_documents WHERE user_id = ? ORDER BY uploaded_at DESC");
+$documents_stmt->bind_param("i", $user_id);
+$documents_stmt->execute();
+$documents = $documents_stmt->get_result();
+$has_documents = $documents->num_rows > 0;
+
+// Get payment status
+$payment_stmt = $conn->prepare("SELECT * FROM payments WHERE user_id = ? ORDER BY created_at DESC LIMIT 1");
+$payment_stmt->bind_param("i", $user_id);
+$payment_stmt->execute();
+$latest_payment = $payment_stmt->get_result()->fetch_assoc();
+
+// Check for residence permit
+$permit_query = $conn->prepare("SELECT * FROM residence_permits WHERE user_id = ? AND status = 'active' ORDER BY id DESC LIMIT 1");
+$permit_query->bind_param("i", $user_id);
+$permit_query->execute();
+$permit_result = $permit_query->get_result();
+$permit = $permit_result->fetch_assoc();
+
+$has_active_permit = ($permit && $permit['status'] === 'active');
+
+// Language translations (same as before, but I'll include a shorter version)
 $translations = [
-    'en' => [
-        'dashboard' => 'Dashboard',
-        'welcome' => 'Welcome back',
-        'personal_info' => 'Personal Information',
-        'full_name' => 'Full Name',
-        'email' => 'Email',
-        'phone' => 'Phone',
-        'dob' => 'Date of Birth',
-        'nationality' => 'Nationality',
-        'quick_actions' => 'Quick Actions',
-        'download_id' => 'Download ID Card',
-        'update_profile' => 'Update Profile',
-        'request_renewal' => 'Request Renewal',
-        'my_applications' => 'My Applications',
-        'upload_documents' => 'Upload Documents',
-        'track_status' => 'Track Status',
-        'apply_new' => 'Apply for New ID',
-        'apply_replacement' => 'Request Replacement',
-        'apply_renewal' => 'Renew ID Card',
-        'no_applications' => 'No applications yet',
-        'no_documents' => 'No documents uploaded yet', // ADDED THIS
-        'application_id' => 'Application ID',
-        'type' => 'Type',
-        'status' => 'Status',
-        'date' => 'Date',
-        'documents' => 'Documents',
-        'document_name' => 'Document Name',
-        'verification_status' => 'Verification',
-        'uploaded' => 'Uploaded',
-        'pending' => 'Pending',
-        'under_review' => 'Under Review',
-        'approved' => 'Approved',
-        'rejected' => 'Rejected',
-        'verified' => 'Verified',
-        'not_verified' => 'Not Verified',
-        'application_form' => 'Application Form',
-        'select_type' => 'Select Application Type',
-        'new_id' => 'New National ID',
-        'replacement' => 'ID Replacement',
-        'renewal' => 'ID Renewal',
-        'notes' => 'Additional Notes (optional)',
-        'submit' => 'Submit Application',
-        'logout' => 'Logout',
-        'select_office' => 'Select Pickup Office',
-        'office_location' => 'Office Location',
-        'pay_renewal' => 'Pay Renewal Fee',
-        'payment_fee' => 'ID Card Fee',
-        'pay_now' => 'Pay Now',
-        'renewal_fee' => 'Renewal/Replacement Fee: ',
-        'payment_amount' => '3,000 MRU',
-        'payment_description' => 'For ID card renewal or replacement',
-        'payment_note' => 'Pay via mobile money (Bankily, Masrivi, Sadad, etc.)',
-        'form_note' => 'After submission, you will need to upload required documents.' // ADDED THIS
-    ],
     'fr' => [
-        'dashboard' => 'Tableau de bord',
-        'welcome' => 'Bon retour',
+        'dashboard' => 'Tableau de bord Résident',
+        'welcome' => 'Bienvenue',
         'personal_info' => 'Informations personnelles',
         'full_name' => 'Nom complet',
         'email' => 'Email',
         'phone' => 'Téléphone',
         'dob' => 'Date de naissance',
         'nationality' => 'Nationalité',
-        'quick_actions' => 'Actions rapides',
-        'download_id' => 'Télécharger la carte',
-        'update_profile' => 'Mettre à jour',
-        'request_renewal' => 'Demander renouvellement',
-        'my_applications' => 'Mes demandes',
-        'upload_documents' => 'Télécharger documents',
-        'track_status' => 'Suivre statut',
-        'apply_new' => 'Demander nouvelle carte',
-        'apply_replacement' => 'Demander remplacement',
-        'apply_renewal' => 'Renouveler carte',
-        'no_applications' => 'Aucune demande',
-        'no_documents' => 'Aucun document téléchargé', // ADDED THIS
-        'application_id' => 'N° de demande',
-        'type' => 'Type',
-        'status' => 'Statut',
-        'date' => 'Date',
-        'documents' => 'Documents',
-        'document_name' => 'Document',
-        'verification_status' => 'Vérification',
-        'uploaded' => 'Téléchargé',
-        'pending' => 'En attente',
-        'under_review' => 'En examen',
-        'approved' => 'Approuvé',
-        'rejected' => 'Rejeté',
-        'verified' => 'Vérifié',
-        'not_verified' => 'Non vérifié',
-        'application_form' => 'Formulaire de demande',
-        'select_type' => 'Type de demande',
-        'new_id' => 'Nouvelle carte nationale',
-        'replacement' => 'Remplacement',
-        'renewal' => 'Renouvellement',
-        'notes' => 'Notes additionnelles',
-        'submit' => 'Soumettre',
         'logout' => 'Déconnexion',
-        'select_office' => 'Choisir bureau',
-        'office_location' => 'Lieu de retrait',
-        'pay_renewal' => 'Payer frais de renouvellement',
-        'payment_fee' => 'Frais de carte',
+        'status_pending' => 'En cours d\'examen',
+        'status_active' => 'Résidence valide',
+        'payment_fee' => 'Frais de permis de résidence',
         'pay_now' => 'Payer maintenant',
-        'renewal_fee' => 'Frais renouvellement/remplacement: ',
-        'payment_amount' => '3 000 MRU',
-        'payment_description' => 'Pour renouvellement ou remplacement de carte',
-        'payment_note' => 'Payer via mobile money (Bankily, Masrivi, Sadad, etc.)',
-        'form_note' => 'Après soumission, vous devrez télécharger les documents requis.' // ADDED THIS
-    ],
-    'ar' => [
-        'dashboard' => 'لوحة التحكم',
-        'welcome' => 'مرحبا بعودتك',
-        'personal_info' => 'المعلومات الشخصية',
-        'full_name' => 'الاسم الكامل',
-        'email' => 'البريد الإلكتروني',
-        'phone' => 'الهاتف',
-        'dob' => 'تاريخ الميلاد',
-        'nationality' => 'الجنسية',
-        'quick_actions' => 'إجراءات سريعة',
-        'download_id' => 'تحميل البطاقة',
-        'update_profile' => 'تحديث الملف',
-        'request_renewal' => 'طلب تجديد',
-        'my_applications' => 'طلباتي',
-        'upload_documents' => 'تحميل المستندات',
-        'track_status' => 'تتبع الحالة',
-        'apply_new' => 'طلب بطاقة جديدة',
-        'apply_replacement' => 'طلب استبدال',
-        'apply_renewal' => 'تجديد البطاقة',
-        'no_applications' => 'لا توجد طلبات',
-        'no_documents' => 'لا توجد مستندات', // ADDED THIS
-        'application_id' => 'رقم الطلب',
-        'type' => 'النوع',
-        'status' => 'الحالة',
-        'date' => 'التاريخ',
-        'documents' => 'المستندات',
-        'document_name' => 'اسم المستند',
-        'verification_status' => 'التحقق',
-        'uploaded' => 'تم التحميل',
-        'pending' => 'قيد الانتظار',
-        'under_review' => 'قيد المراجعة',
-        'approved' => 'موافق عليه',
-        'rejected' => 'مرفوض',
-        'verified' => 'تم التحقق',
-        'not_verified' => 'لم يتم التحقق',
-        'application_form' => 'نموذج الطلب',
-        'select_type' => 'اختر نوع الطلب',
-        'new_id' => 'بطاقة وطنية جديدة',
-        'replacement' => 'استبدال',
-        'renewal' => 'تجديد',
-        'notes' => 'ملاحظات إضافية',
-        'submit' => 'إرسال الطلب',
-        'logout' => 'تسجيل الخروج',
-        'select_office' => 'اختر المكتب',
-        'office_location' => 'مكان الاستلام',
-        'pay_renewal' => 'دفع رسوم التجديد',
-        'payment_fee' => 'رسوم البطاقة',
-        'pay_now' => 'ادفع الآن',
-        'renewal_fee' => 'رسوم التجديد/الاستبدال: ',
-        'payment_amount' => '3,000 أوقية',
-        'payment_description' => 'لتجديد أو استبدال البطاقة',
-        'payment_note' => 'الدفع عبر الموبايل موني (بنكيلي، مسرافي، سداد، إلخ)',
-        'form_note' => 'بعد الإرسال، ستحتاج إلى تحميل المستندات المطلوبة.' // ADDED THIS
+        'nationality_note' => 'Frais selon votre nationalité:',
+        'payment_modal_title' => 'Payer les frais de permis',
+        'select_provider' => 'Sélectionner un opérateur',
+        'payment_instructions' => 'Instructions de paiement',
+        'step_payment_1' => '1. Composez le numéro sur votre téléphone',
+        'step_payment_2' => '2. Entrez l\'ID transaction comme référence',
+        'step_payment_3' => '3. Confirmez le paiement de',
+        'upload_receipt' => 'Télécharger le reçu',
+        'submit_receipt' => 'Soumettre le reçu',
+        'senegal_rate' => 'Tarif spécial Sénégalais: 1 500 MRU/an',
+        'other_rate' => 'Tarif standard autres nationalités: 45 000 MRU/an',
+        'residence_status' => 'Statut du permis de résidence',
+        'welcome_message' => 'Bienvenue sur votre tableau de bord résident!',
+        'user_type_label' => 'Type d\'utilisateur',
+        'nationality_label' => 'Nationalité',
+        'documents' => 'Mes documents',
+        'upload_document' => 'Télécharger un document',
+        'document_type' => 'Type de document',
+        'choose_file' => 'Choisir un fichier',
+        'upload' => 'Télécharger',
+        'passport_copy' => 'Copie passeport',
+        'photo' => 'Photo',
+        'proof_address' => 'Justificatif de domicile',
+        'police_certificate' => 'Certificat de police',
+        'your_documents' => 'Vos documents',
+        'file_name' => 'Nom du fichier',
+        'upload_date' => 'Date de téléchargement',
+        'status' => 'Statut',
+        'verified' => 'Vérifié',
+        'pending' => 'En attente',
+        'transaction_id' => 'ID de transaction',
+        'generate_id' => 'Générer un ID',
+        'payment_provider' => 'Opérateur de paiement',
+        'bankily' => 'Bankily',
+        'masrivi' => 'Masrivi',
+        'sadad' => 'Sadad',
+        'click' => 'Click',
+        'binbank' => 'BinBank',
+        'moovemauritel' => 'Moove/Mauritel',
+        'payment_notes' => 'Notes importantes:',
+        'note_1' => '• Vérification sous 24-48 heures',
+        'note_2' => '• Gardez votre ID transaction',
+        'note_3' => '• Seuls les opérateurs approuvés sont listés',
+        'note_4' => '• Contactez le support en cas d\'échec'
     ]
 ];
 
@@ -257,7 +282,7 @@ $dir = $lang === 'ar' ? 'rtl' : 'ltr';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo $text['dashboard']; ?> - IDTrack</title>
-    <link rel="stylesheet" href="citizen_dashboard.css">
+    <link rel="stylesheet" href="noncitizen_dashboard.css">
 </head>
 <body>
     <div class="dashboard-container">
@@ -268,32 +293,44 @@ $dir = $lang === 'ar' ? 'rtl' : 'ltr';
             </div>
             
             <nav class="nav-menu">
-                <a href="#dashboard" class="nav-item active"><?php echo $text['dashboard']; ?></a>
-                <a href="#applications" class="nav-item"><?php echo $text['my_applications']; ?></a>
-                <a href="#documents" class="nav-item"><?php echo $text['documents']; ?></a>
-                <a href="#apply" class="nav-item"><?php echo $text['apply_new']; ?></a>
-                <a href="#profile" class="nav-item"><?php echo $text['personal_info']; ?></a>
+                <a href="#overview" class="nav-item active">
+                    📊 <span><?php echo $text['dashboard']; ?></span>
+                </a>
+                <a href="#documents" class="nav-item">
+                    📎 <span><?php echo $text['documents']; ?></span>
+                </a>
+                <a href="#payment" class="nav-item">
+                    💰 <span>Paiement</span>
+                </a>
             </nav>
             
             <div class="sidebar-footer">
-                <a href="logout.php" class="logout-btn"><?php echo $text['logout']; ?></a>
+                <a href="logout.php" class="logout-btn">
+                    🚪 <span><?php echo $text['logout']; ?></span>
+                </a>
             </div>
         </aside>
+        
         <main class="main-content">
+            <div class="language-switch">
+                <a href="?lang=fr" class="<?php echo $lang === 'fr' ? 'active' : ''; ?>">FR</a>
+                <a href="?lang=ar" class="<?php echo $lang === 'ar' ? 'active' : ''; ?>">AR</a>
+                <a href="?lang=en" class="<?php echo $lang === 'en' ? 'active' : ''; ?>">EN</a>
+            </div>
+            
             <header class="header">
                 <div class="welcome">
                     <h1><?php echo $text['welcome']; ?>, <?php echo htmlspecialchars($user['full_name']); ?>!</h1>
-                    <p><?php echo date('l, F j, Y'); ?></p>
+                    <p><?php echo date('d/m/Y'); ?></p>
                 </div>
             </header>
-            <?php if (isset($success_message)): ?>
-                <div class="success-message"><?php echo $success_message; ?></div>
-            <?php endif; ?>
-            <section id="dashboard">
+            
+            <!-- Overview Section -->
+            <section id="overview">
                 <div class="dashboard-grid">
                     <div class="card info-card">
                         <div class="card-header">
-                            <h3><?php echo $text['personal_info']; ?></h3>
+                            <h3>👤 <?php echo $text['personal_info']; ?></h3>
                         </div>
                         <div class="card-body">
                             <div class="info-item">
@@ -306,286 +343,278 @@ $dir = $lang === 'ar' ? 'rtl' : 'ltr';
                             </div>
                             <div class="info-item">
                                 <span class="label"><?php echo $text['phone']; ?>:</span>
-                                <span class="value"><?php echo htmlspecialchars($user['phone']); ?></span>
+                                <span class="value"><?php echo htmlspecialchars($user['phone'] ?? 'N/A'); ?></span>
                             </div>
                             <div class="info-item">
                                 <span class="label"><?php echo $text['dob']; ?>:</span>
-                                <span class="value"><?php echo date('d/m/Y', strtotime($user['date_of_birth'])); ?></span>
+                                <span class="value"><?php echo !empty($user['date_of_birth']) ? date('d/m/Y', strtotime($user['date_of_birth'])) : 'N/A'; ?></span>
                             </div>
                             <div class="info-item">
                                 <span class="label"><?php echo $text['nationality']; ?>:</span>
-                                <span class="value"><?php echo htmlspecialchars($user['nationality']); ?></span>
+                                <span class="value"><?php echo htmlspecialchars($user['nationality'] ?? 'N/A'); ?></span>
                             </div>
                         </div>
                     </div>
-                    <div class="card payment-card">
+                    
+                    <div class="card">
                         <div class="card-header">
-                            <h3>💳 <?php echo $text['payment_fee']; ?></h3>
+                            <h3>🏠 <?php echo $text['residence_status']; ?></h3>
                         </div>
                         <div class="card-body">
-                            <div class="amount-display">
-                                <div class="amount-label"><?php echo $text['renewal_fee']; ?></div>
-                                <div class="amount-value"><?php echo $text['payment_amount']; ?></div>
-                                <div class="amount-description">
-                                    <?php echo $text['payment_description']; ?>
+                            <p><?php echo $text['welcome_message']; ?></p>
+                            
+                            <?php if ($has_active_permit): ?>
+                                <div class="status-badge status-active">
+                                    ✅ <?php echo $text['status_active']; ?>
                                 </div>
-                                <div class="transaction-id" id="transactionId"></div>
+                            <?php else: ?>
+                                <div class="status-badge status-pending">
+                                    ⏳ <?php echo $text['status_pending']; ?>
+                                </div>
+                                <p style="margin-top: 15px; color: #666;">
+                                    Pour obtenir votre permis de résidence, veuillez:
+                                </p>
+                                <ol style="margin-left: 20px; color: #666;">
+                                    <li>Télécharger les documents requis</li>
+                                    <li>Payer les frais de permis</li>
+                                    <li>Attendre la vérification (2-3 jours)</li>
+                                </ol>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">
+                        <h3>💰 <?php echo $text['payment_fee']; ?></h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="payment-info">
+                            <div class="amount-display">
+                                <div class="amount-label"><?php echo $text['nationality_note']; ?></div>
+                                <div class="amount-value"><?php echo $payment_amount_formatted; ?></div>
+                                <div class="amount-description">
+                                    <?php echo $is_senegalese ? $text['senegal_rate'] : $text['other_rate']; ?>
+                                </div>
+                                <div style="margin-top: 10px; color: #666; font-size: 0.9rem;">
+                                    <?php echo $is_senegalese ? '🇸🇳 Vous êtes Sénégalais(e) - tarif préférentiel' : '🌍 Autre nationalité - tarif standard'; ?>
+                                </div>
                             </div>
-                            <button class="action-btn payment" onclick="makePayment('id_renewal')">
+                            <button onclick="openPaymentModal()" class="action-btn payment">
                                 💳 <?php echo $text['pay_now']; ?>
                             </button>
-                            <p class="payment-amount-note">
-                                <?php echo $text['payment_note']; ?>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Documents Section -->
+            <section id="documents" style="margin-top: 30px;">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>📎 <?php echo $text['documents']; ?></h3>
+                    </div>
+                    <div class="card-body">
+                        <?php if ($upload_message): ?>
+                            <div class="alert <?php echo $upload_success ? 'alert-success' : 'alert-error'; ?>">
+                                <?php echo htmlspecialchars($upload_message); ?>
+                            </div>
+                        <?php endif; ?>
+                        
+                        <h4><?php echo $text['upload_document']; ?></h4>
+                        <form method="POST" enctype="multipart/form-data" class="upload-form">
+                            <div class="form-group">
+                                <label><?php echo $text['document_type']; ?>:</label>
+                                <select name="document_type" required>
+                                    <option value="">-- Sélectionner --</option>
+                                    <option value="passport"><?php echo $text['passport_copy']; ?></option>
+                                    <option value="photo"><?php echo $text['photo']; ?></option>
+                                    <option value="proof_of_address"><?php echo $text['proof_address']; ?></option>
+                                    <option value="police_certificate"><?php echo $text['police_certificate']; ?></option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label><?php echo $text['choose_file']; ?>:</label>
+                                <input type="file" name="document_file" accept=".jpg,.jpeg,.png,.pdf" required>
+                                <small>Formats acceptés: JPG, PNG, PDF (max 5MB)</small>
+                            </div>
+                            
+                            <button type="submit" name="upload_document" class="action-btn primary">
+                                📤 <?php echo $text['upload']; ?>
+                            </button>
+                        </form>
+                        
+                        <hr style="margin: 30px 0;">
+                        
+                        <h4><?php echo $text['your_documents']; ?></h4>
+                        <?php if ($has_documents): ?>
+                            <div class="documents-list">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th><?php echo $text['document_type']; ?></th>
+                                            <th><?php echo $text['file_name']; ?></th>
+                                            <th><?php echo $text['upload_date']; ?></th>
+                                            <th><?php echo $text['status']; ?></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php while ($doc = $documents->fetch_assoc()): ?>
+                                        <tr>
+                                            <td>
+                                                <?php 
+                                                $type_names = [
+                                                    'passport' => $text['passport_copy'],
+                                                    'photo' => $text['photo'],
+                                                    'proof_of_address' => $text['proof_address'],
+                                                    'police_certificate' => $text['police_certificate']
+                                                ];
+                                                echo $type_names[$doc['document_type']] ?? $doc['document_type'];
+                                                ?>
+                                            </td>
+                                            <td><?php echo htmlspecialchars($doc['file_name']); ?></td>
+                                            <td><?php echo date('d/m/Y H:i', strtotime($doc['uploaded_at'])); ?></td>
+                                            <td>
+                                                <span class="status-badge <?php echo ($doc['verified'] ?? false) ? 'status-active' : 'status-pending'; ?>">
+                                                    <?php echo ($doc['verified'] ?? false) ? $text['verified'] : $text['pending']; ?>
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        <?php endwhile; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <?php else: ?>
+                            <p style="color: #666; text-align: center; padding: 20px;">
+                                Aucun document téléchargé pour le moment.
                             </p>
-                        </div>
-                    </div>
-                    <div class="card actions-card">
-                        <div class="card-header">
-                            <h3><?php echo $text['quick_actions']; ?></h3>
-                        </div>
-                        <div class="card-body">
-                            <button class="action-btn primary" onclick="downloadID()">
-                                📥 <?php echo $text['download_id']; ?>
-                            </button>
-                            <button class="action-btn secondary" onclick="showApplicationForm()">
-                                📄 <?php echo $text['apply_new']; ?>
-                            </button>
-                            <button class="action-btn tertiary" onclick="uploadDocuments()">
-                                📎 <?php echo $text['upload_documents']; ?>
-                            </button>
-                            <button class="action-btn secondary" onclick="makePayment('id_renewal')">
-                                💰 <?php echo $text['pay_renewal']; ?>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </section>
-            <section id="applications" class="section">
-                <div class="card">
-                    <div class="card-header">
-                        <h3><?php echo $text['my_applications']; ?></h3>
-                    </div>
-                    <div class="card-body">
-                        <?php if (!empty($applications)): ?>
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th><?php echo $text['application_id']; ?></th>
-                                    <th><?php echo $text['type']; ?></th>
-                                    <th><?php echo $text['status']; ?></th>
-                                    <th><?php echo $text['date']; ?></th>
-                                    <th><?php echo $text['track_status']; ?></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($applications as $app): ?>
-                                <tr>
-                                    <td>#<?php echo $app['id']; ?></td>
-                                    <td><?php echo ucfirst($app['application_type']); ?></td>
-                                    <td><span class="status-badge status-<?php echo $app['status']; ?>">
-                                        <?php echo $text[$app['status']] ?? ucfirst($app['status']); ?>
-                                    </span></td>
-                                    <td><?php echo date('M d, Y', strtotime($app['created_at'])); ?></td>
-                                    <td>
-                                        <button class="btn-track" onclick="trackApplication(<?php echo $app['id']; ?>)">
-                                            <?php echo $text['track_status']; ?>
-                                        </button>
-                                    </td>
-                                </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                        <?php else: ?>
-                        <p class="no-data"><?php echo $text['no_applications']; ?></p>
                         <?php endif; ?>
                     </div>
                 </div>
             </section>
-            <section id="documents" class="section">
+            
+            <!-- Payment Status Section -->
+            <?php if ($latest_payment): ?>
+            <section id="payment-status" style="margin-top: 30px;">
                 <div class="card">
                     <div class="card-header">
-                        <h3><?php echo $text['documents']; ?></h3>
+                        <h3>💰 Statut de paiement</h3>
                     </div>
                     <div class="card-body">
-                        <?php if (!empty($documents)): ?>
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th><?php echo $text['document_name']; ?></th>
-                                    <th><?php echo $text['application_id']; ?></th>
-                                    <th><?php echo $text['verification_status']; ?></th>
-                                    <th><?php echo $text['uploaded']; ?></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($documents as $doc): ?>
-                                <tr>
-                                    <td><?php echo ucfirst($doc['document_type']); ?></td>
-                                    <td>#<?php echo $doc['application_id']; ?></td>
-                                    <td>
-                                        <span class="status-badge status-<?php echo $doc['verification_status'] ?? 'not_verified'; ?>">
-                                            <?php echo $text[$doc['verification_status']] ?? $text['not_verified']; ?>
-                                        </span>
-                                    </td>
-                                    <td><?php echo date('M d, Y', strtotime($doc['uploaded_at'])); ?></td>
-                                </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                        <?php else: ?>
-                        <p class="no-data"><?php echo $text['no_documents']; ?></p>
-                        <?php endif; ?>
-                        <div class="upload-section">
-                            <button class="btn-upload" onclick="uploadDocuments()">
-                                📎 <?php echo $text['upload_documents']; ?>
-                            </button>
+                        <div class="info-item">
+                            <span class="label">ID Transaction:</span>
+                            <span class="value"><?php echo htmlspecialchars($latest_payment['transaction_id']); ?></span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">Opérateur:</span>
+                            <span class="value"><?php echo htmlspecialchars($latest_payment['provider']); ?></span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">Montant:</span>
+                            <span class="value"><?php echo number_format($latest_payment['amount'], 0, ',', ' '); ?> MRU</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">Statut:</span>
+                            <span class="value">
+                                <span class="status-badge <?php echo $latest_payment['status'] === 'verified' ? 'status-active' : 'status-pending'; ?>">
+                                    <?php echo $latest_payment['status'] === 'verified' ? 'Vérifié' : 'En attente de vérification'; ?>
+                                </span>
+                            </span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">Date:</span>
+                            <span class="value"><?php echo date('d/m/Y H:i', strtotime($latest_payment['created_at'])); ?></span>
                         </div>
                     </div>
                 </div>
             </section>
-            <section id="apply" class="section">
-                <div class="card">
-                    <div class="card-header">
-                        <h3><?php echo $text['application_form']; ?></h3>
-                    </div>
-                    <div class="card-body">
-                        <?php if ($has_pending_application): ?>
-                        <div class="warning-message">
-                            <p> You have a pending application. Please wait for it to be processed before submitting a new one.</p>
-                        </div>
-                        <?php else: ?>
-                        <form method="POST" id="applicationForm">
-                            <div class="form-group">
-                                <label><?php echo $text['select_type']; ?> *</label>
-                                <select name="application_type" required>
-                                    <option value="">-- <?php echo $text['select_type']; ?> --</option>
-                                    <option value="new_id"><?php echo $text['new_id']; ?></option>
-                                    <option value="replacement"><?php echo $text['replacement']; ?></option>
-                                    <option value="renewal"><?php echo $text['renewal']; ?></option>
-                                </select>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label><?php echo $text['office_location']; ?> *</label>
-                                <select name="office_location" required>
-                                    <option value="">-- <?php echo $text['select_office']; ?> --</option>
-                                    <option value="nouakchott_central">Nouakchott Central Office</option>
-                                    <option value="nouakchott_north">Nouakchott North Office</option>
-                                    <option value="nouadhibou">Nouadhibou Office</option>
-                                    <option value="kaedi">Kaédi Office</option>
-                                    <option value="kiffa">Kiffa Office</option>
-                                </select>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label><?php echo $text['notes']; ?></label>
-                                <textarea name="notes" rows="3" placeholder="<?php echo $text['notes']; ?>"></textarea>
-                            </div>
-                            
-                            <div class="form-footer">
-                                <p class="form-note">* <?php echo $text['form_note']; ?></p>
-                                <button type="submit" name="apply_new" class="btn-submit">
-                                    <?php echo $text['submit']; ?>
-                                </button>
-                            </div>
-                        </form>
-                        <?php endif; ?>
-                    </div>
-                </div>
-            </section>
-            <div id="paymentModal" class="modal">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h3 id="paymentTitle"><?php echo $text['payment_fee']; ?></h3>
-                        <span class="close-modal" onclick="closePaymentModal()">&times;</span>
-                    </div>
-                    <div class="modal-body">
-                        <form id="receiptUploadForm" action="process_payment_citizen.php" method="POST" enctype="multipart/form-data">
-                            <input type="hidden" name="transaction_id" id="paymentTransactionId" value="">
-                            <input type="hidden" name="selected_provider" id="selectedProvider" value="">
-                            <input type="hidden" name="payment_type" id="paymentType" value="">
-                            <input type="hidden" name="amount" value="3000">
-                            
-                            <div class="payment-info">
-                                <div class="amount-display">
-                                    <div class="amount-label"><?php echo $text['renewal_fee']; ?></div>
-                                    <div class="amount-value" id="amountValue"><?php echo $text['payment_amount']; ?></div>
-                                    <div class="amount-description" id="amountDescription"><?php echo $text['payment_description']; ?></div>
-                                    <div class="transaction-id" id="referenceId"></div>
-                                </div>
-                                
-                                <h4>Select Mobile Money Provider</h4>
-                                <div class="providers-grid">
-                                    <div class="provider-option" onclick="selectProvider('bankily')">
-                                        <div class="provider-name">Bankily</div>
-                                    </div>
-                                    <div class="provider-option" onclick="selectProvider('masrivi')">
-                                        <div class="provider-name">Masrivi</div>
-                                    </div>
-                                    <div class="provider-option" onclick="selectProvider('sadad')">
-                                        <div class="provider-name">Sadad</div>
-                                    </div>
-                                    <div class="provider-option" onclick="selectProvider('click')">
-                                        <div class="provider-name">Click</div>
-                                    </div>
-                                    <div class="provider-option" onclick="selectProvider('binbank')">
-                                        <div class="provider-name">Binbank</div>
-                                    </div>
-                                    <div class="provider-option" onclick="selectProvider('moovemauritel')">
-                                        <div class="provider-name">Moove/Mauritel</div>
-                                    </div>
-                                </div>
-                                
-                                <div id="selectedProviderInfo" class="selected-provider" style="display: none;">
-                                    <h4>Payment Number:</h4>
-                                    <div class="provider-number" id="providerNumber"></div>
-                                    <p class="provider-instruction">Use this number to make payment via selected provider</p>
-                                </div>
-                                
-                                <div class="payment-instructions">
-                                    <h4>Payment Instructions:</h4>
-                                    <ol>
-                                        <li>Dial the payment number on your phone</li>
-                                        <li>Enter the Transaction ID as reference: <code id="instructionTransactionId"></code></li>
-                                        <li>Confirm payment of <strong>3,000 MRU</strong></li>
-                                        <li>Take screenshot of payment confirmation</li>
-                                        <li>Upload receipt below</li>
-                                    </ol>
-                                </div>
-                                
-                                <div class="receipt-upload">
-                                    <h4>Upload Payment Receipt</h4>
-                                    <div class="file-upload-area">
-                                        <input type="file" id="receiptFile" name="receipt_file" accept=".jpg,.jpeg,.png,.pdf" required>
-                                        <label for="receiptFile" class="file-label">
-                                            📎
-                                            <div class="upload-text">Click to upload receipt</div>
-                                            <div class="file-size">JPG, PNG, or PDF (max 5MB)</div>
-                                            <div id="fileName"></div>
-                                        </label>
-                                    </div>
-                                    
-                                    <button type="submit" class="btn-upload-receipt">
-                                        📤 Submit Receipt
-                                    </button>
-                                </div>
-                                
-                                <div class="payment-notes">
-                                    <p><strong>Important Notes:</strong></p>
-                                    <p>• Payment verification takes 24-48 hours</p>
-                                    <p>• Keep your Transaction ID for reference</p>
-                                    <p>• Only approved providers are listed</p>
-                                    <p>• Contact support if payment fails</p>
-                                </div>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
+            <?php endif; ?>
         </main>
     </div>
-
-    <!-- JavaScript file -->
-    <script src="citizen_dashboard.js"></script>
+    
+    <!-- Payment Modal -->
+    <div id="paymentModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>💰 <?php echo $text['payment_modal_title']; ?></h3>
+                <span class="close-modal" onclick="closePaymentModal()">×</span>
+            </div>
+            <div class="modal-body">
+                <?php if ($receipt_message): ?>
+                    <div class="alert <?php echo $receipt_success ? 'alert-success' : 'alert-error'; ?>">
+                        <?php echo htmlspecialchars($receipt_message); ?>
+                    </div>
+                <?php endif; ?>
+                
+                <div class="payment-instructions">
+                    <h4><?php echo $text['payment_instructions']; ?></h4>
+                    <ol>
+                        <li><?php echo $text['step_payment_1']; ?></li>
+                        <li><?php echo $text['step_payment_2']; ?>: <strong id="displayTransactionId">TRX-<?php echo time(); ?></strong></li>
+                        <li><?php echo $text['step_payment_3']; ?> <strong><?php echo $payment_amount_formatted; ?></strong></li>
+                        <li>Prenez une capture d'écran de la confirmation</li>
+                        <li><?php echo $text['upload_receipt']; ?></li>
+                    </ol>
+                </div>
+                
+                <div class="selected-provider" id="selectedProviderInfo" style="display: none;">
+                    <p><strong>Opérateur sélectionné:</strong> <span id="selectedProviderName"></span></p>
+                    <p><strong>Numéro à composer:</strong> <span id="providerNumber" class="provider-number">+222 XX XX XX XX</span></p>
+                </div>
+                
+                <form method="POST" enctype="multipart/form-data" id="receiptUploadForm">
+                    <input type="hidden" name="transaction_id" id="paymentTransactionId" value="TRX-<?php echo time(); ?>">
+                    
+                    <div class="form-group">
+                        <label><?php echo $text['payment_provider']; ?>:</label>
+                        <div class="providers-grid">
+                            <?php 
+                            $providers = [
+                                'bankily' => $text['bankily'],
+                                'masrivi' => $text['masrivi'],
+                                'sadad' => $text['sadad'],
+                                'click' => $text['click'],
+                                'binbank' => $text['binbank'],
+                                'moovemauritel' => $text['moovemauritel']
+                            ];
+                            foreach ($providers as $key => $name): ?>
+                            <div class="provider-option" onclick="selectProvider('<?php echo $key; ?>', '<?php echo $name; ?>', this)">
+                                <div class="provider-name"><?php echo $name; ?></div>
+                            </div>
+                            <?php endforeach; ?>
+                        </div>
+                        <input type="hidden" name="payment_provider" id="selectedProvider" value="">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label><?php echo $text['upload_receipt']; ?>:</label>
+                        <div class="file-upload-area">
+                            <input type="file" name="receipt_file" id="receiptFile" accept=".jpg,.jpeg,.png,.pdf" required>
+                            <label for="receiptFile" class="file-label">
+                                <div class="upload-text">Cliquez pour télécharger le reçu</div>
+                                <div class="file-size">JPG, PNG, PDF (max 5MB)</div>
+                            </label>
+                            <div id="fileName" class="file-name-display"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="payment-notes">
+                        <p><strong><?php echo $text['payment_notes']; ?></strong></p>
+                        <p><?php echo $text['note_1']; ?></p>
+                        <p><?php echo $text['note_2']; ?></p>
+                        <p><?php echo $text['note_3']; ?></p>
+                        <p><?php echo $text['note_4']; ?></p>
+                    </div>
+                    
+                    <button type="submit" name="upload_receipt" class="btn-upload-receipt">
+                        📤 <?php echo $text['submit_receipt']; ?>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <script src="noncitizen_dashboard.js"></script>
 </body>
 </html>

@@ -1,30 +1,29 @@
 <?php
-// Enable ALL errors
+// Enable error reporting
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-// Include config FIRST (before any session)
+// Include config
 require_once 'config.php';
 
-// Start session using your config function
-start_secure_session();
+// Start session
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 // Check if user is logged in
-if (!is_logged_in()) {
+if (!isset($_SESSION['user_id']) || empty($_SESSION['user_id'])) {
     header("Location: login.php");
     exit();
 }
 
 // Check user type
 $user_type = $_SESSION['user_type'] ?? '';
-$normalized_user_type = strtolower(str_replace([' ', '_'], '', $user_type));
-
-// If not noncitizen, redirect to appropriate page
-if ($normalized_user_type !== 'noncitizen') {
-    if ($normalized_user_type === 'citizen') {
+if ($user_type !== 'noncitizen' && $user_type !== 'non_citizen') {
+    if ($user_type === 'citizen') {
         header("Location: citizen_dashboard.php");
         exit();
-    } elseif ($normalized_user_type === 'admin') {
+    } elseif ($user_type === 'admin') {
         header("Location: admin_dashboard.php");
         exit();
     } else {
@@ -36,26 +35,30 @@ if ($normalized_user_type !== 'noncitizen') {
 $user_id = $_SESSION['user_id'];
 
 // Language handling
+$lang = 'fr'; // Default
 if (isset($_GET['lang']) && in_array($_GET['lang'], ['fr', 'ar', 'en'])) {
-    $_SESSION['language'] = $_GET['lang'];
     $lang = $_GET['lang'];
+    $_SESSION['language'] = $lang;
+} elseif (isset($_SESSION['language']) && in_array($_SESSION['language'], ['fr', 'ar', 'en'])) {
+    $lang = $_SESSION['language'];
 } else {
-    $lang = $_SESSION['language'] ?? 'fr';
+    $_SESSION['language'] = $lang;
 }
 
 // Get user data
-$conn = $GLOBALS['conn'] ?? null;
-if (!$conn) {
-    die("Database connection failed");
+// Replace with your database connection
+$conn = new mysqli('localhost', 'username', 'password', 'database_name');
+if ($conn->connect_error) {
+    die("Database connection failed: " . $conn->connect_error);
 }
 
 $stmt = $conn->prepare("SELECT * FROM users WHERE id = ?");
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
-$user = $stmt->get_result()->fetch_assoc();
+$result = $stmt->get_result();
+$user = $result->fetch_assoc();
 $stmt->close();
 
-// Check if user exists
 if (!$user) {
     session_destroy();
     header("Location: login.php");
@@ -78,7 +81,7 @@ foreach ($senegalese_keywords as $keyword) {
 $payment_amount = $is_senegalese ? 1500 : 45000;
 $payment_amount_formatted = number_format($payment_amount, 0, ',', ' ') . ' MRU';
 
-// SIMPLIFIED TRANSLATIONS
+// Language translations
 $translations = [
     'fr' => [
         'dashboard' => 'Tableau de bord Résident',
@@ -122,21 +125,99 @@ $translations = [
         'payment_notes' => 'Notes importantes:',
         'note_1' => '• Vérification sous 24-48 heures',
         'note_2' => '• Gardez votre ID transaction'
+    ],
+    'en' => [
+        'dashboard' => 'Resident Dashboard',
+        'welcome' => 'Welcome',
+        'personal_info' => 'Personal Information',
+        'full_name' => 'Full Name',
+        'email' => 'Email',
+        'phone' => 'Phone',
+        'dob' => 'Date of Birth',
+        'nationality' => 'Nationality',
+        'logout' => 'Logout',
+        'status_pending' => 'Pending Review',
+        'status_active' => 'Valid Residence',
+        'payment_fee' => 'Residence Permit Fee',
+        'pay_now' => 'Pay Now',
+        'nationality_note' => 'Fee based on your nationality:',
+        'senegal_rate' => 'Special rate for Senegalese: 1,500 MRU/year',
+        'other_rate' => 'Standard rate for other nationalities: 45,000 MRU/year',
+        'residence_status' => 'Residence Permit Status',
+        'welcome_message' => 'Welcome to your resident dashboard!',
+        'user_type_label' => 'User Type',
+        'documents' => 'My Documents',
+        'upload_document' => 'Upload Document',
+        'passport_copy' => 'Passport Copy',
+        'photo' => 'Photo',
+        'upload' => 'Upload',
+        'transaction_id' => 'Transaction ID',
+        'payment_provider' => 'Payment Provider',
+        'bankily' => 'Bankily',
+        'masrivi' => 'Masrivi',
+        'sadad' => 'Sadad',
+        'click' => 'Click',
+        'binbank' => 'BinBank',
+        'moovemauritel' => 'Moove/Mauritel',
+        'submit_receipt' => 'Submit Receipt',
+        'payment_instructions' => 'Payment Instructions',
+        'step_payment_1' => '1. Dial the number on your phone',
+        'step_payment_2' => '2. Enter the transaction ID as reference',
+        'step_payment_3' => '3. Confirm payment of',
+        'upload_receipt' => 'Upload Receipt',
+        'payment_notes' => 'Important Notes:',
+        'note_1' => '• Verification within 24-48 hours',
+        'note_2' => '• Keep your transaction ID'
+    ],
+    'ar' => [
+        'dashboard' => 'لوحة تحكم المقيم',
+        'welcome' => 'مرحبا',
+        'personal_info' => 'المعلومات الشخصية',
+        'full_name' => 'الاسم الكامل',
+        'email' => 'البريد الإلكتروني',
+        'phone' => 'الهاتف',
+        'dob' => 'تاريخ الميلاد',
+        'nationality' => 'الجنسية',
+        'logout' => 'تسجيل الخروج',
+        'status_pending' => 'قيد المراجعة',
+        'status_active' => 'إقامة صالحة',
+        'payment_fee' => 'رسوم تصريح الإقامة',
+        'pay_now' => 'ادفع الآن',
+        'nationality_note' => 'الرسوم حسب جنسيتك:',
+        'senegal_rate' => 'سعر خاص للسنغاليين: 1,500 أوقية/سنة',
+        'other_rate' => 'سعر قياسي للجنسيات الأخرى: 45,000 أوقية/سنة',
+        'residence_status' => 'حالة تصريح الإقامة',
+        'welcome_message' => 'مرحبا بكم في لوحة تحكم المقيم!',
+        'user_type_label' => 'نوع المستخدم',
+        'documents' => 'مستنداتي',
+        'upload_document' => 'رفع مستند',
+        'passport_copy' => 'نسخة جواز السفر',
+        'photo' => 'صورة',
+        'upload' => 'رفع',
+        'transaction_id' => 'معرف المعاملة',
+        'payment_provider' => 'مزود الدفع',
+        'bankily' => 'بنكيلي',
+        'masrivi' => 'مصرفي',
+        'sadad' => 'سداد',
+        'click' => 'كليك',
+        'binbank' => 'بن بانك',
+        'moovemauritel' => 'موف/موريتل',
+        'submit_receipt' => 'إرسال الإيصال',
+        'payment_instructions' => 'تعليمات الدفع',
+        'step_payment_1' => '1. اطلب الرقم على هاتفك',
+        'step_payment_2' => '2. أدخل معرف المعاملة كمرجع',
+        'step_payment_3' => '3. تأكيد دفع مبلغ',
+        'upload_receipt' => 'رفع الإيصال',
+        'payment_notes' => 'ملاحظات هامة:',
+        'note_1' => '• التحقق خلال 24-48 ساعة',
+        'note_2' => '• احتفظ بمعرف المعاملة'
     ]
 ];
 
 $text = $translations[$lang] ?? $translations['fr'];
 $dir = $lang === 'ar' ? 'rtl' : 'ltr';
-
-// Check for residence permit
-$permit_query = $conn->prepare("SELECT * FROM residence_permits WHERE user_id = ? AND status = 'active' ORDER BY id DESC LIMIT 1");
-$permit_query->bind_param("i", $user_id);
-$permit_query->execute();
-$permit_result = $permit_query->get_result();
-$permit = $permit_result->fetch_assoc();
-
-$has_active_permit = ($permit && $permit['status'] === 'active');
 ?>
+
 <!DOCTYPE html>
 <html lang="<?php echo $lang; ?>" dir="<?php echo $dir; ?>">
 <head>
@@ -186,7 +267,6 @@ $has_active_permit = ($permit && $permit['status'] === 'active');
                 </div>
             </header>
             
-            <!-- Overview Section -->
             <section id="overview" class="section">
                 <div class="dashboard-grid">
                     <div class="card info-card">
@@ -228,27 +308,13 @@ $has_active_permit = ($permit && $permit['status'] === 'active');
                                 <span class="value">Résident</span>
                             </div>
                             <div class="info-item">
-                                <span class="label"><?php echo $text['nationality_label']; ?>:</span>
+                                <span class="label"><?php echo $text['nationality']; ?>:</span>
                                 <span class="value"><?php echo htmlspecialchars($user['nationality'] ?? 'N/A'); ?></span>
                             </div>
                             
-                            <?php if ($has_active_permit): ?>
-                                <div class="status-badge status-active">
-                                    ✅ <?php echo $text['status_active']; ?>
-                                </div>
-                            <?php else: ?>
-                                <div class="status-badge status-pending">
-                                    ⏳ <?php echo $text['status_pending']; ?>
-                                </div>
-                                <p style="margin-top: 15px; color: #666;">
-                                    Pour obtenir votre permis de résidence, veuillez:
-                                </p>
-                                <ol style="margin-left: 20px; color: #666;">
-                                    <li>Télécharger les documents requis</li>
-                                    <li>Payer les frais de permis</li>
-                                    <li>Attendre la vérification (2-3 jours)</li>
-                                </ol>
-                            <?php endif; ?>
+                            <div class="status-badge status-pending">
+                                ⏳ <?php echo $text['status_pending']; ?>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -268,7 +334,6 @@ $has_active_permit = ($permit && $permit['status'] === 'active');
                                 <div class="payment-amount-note">
                                     <?php echo $is_senegalese ? '🇸🇳 Vous êtes Sénégalais(e) - tarif préférentiel' : '🌍 Autre nationalité - tarif standard'; ?>
                                 </div>
-                                <div class="transaction-id" id="transactionIdDisplay">TRX-<?php echo time(); ?></div>
                             </div>
                             <button onclick="openPaymentModal()" class="action-btn payment">
                                 💳 <?php echo $text['pay_now']; ?>
@@ -278,7 +343,6 @@ $has_active_permit = ($permit && $permit['status'] === 'active');
                 </div>
             </section>
             
-            <!-- Documents Section -->
             <section id="documents" class="section">
                 <div class="card">
                     <div class="card-header">
@@ -297,11 +361,10 @@ $has_active_permit = ($permit && $permit['status'] === 'active');
                 </div>
             </section>
             
-            <!-- Success Message -->
             <div class="success-message">
-                ✅ Tableau de bord résident fonctionnel prêt pour la soumission!
+                ✅ Tableau de bord résident fonctionnel!
                 <div style="font-size: 0.9rem; margin-top: 5px; opacity: 0.9;">
-                    Nationalité détectée: <strong><?php echo htmlspecialchars($user['nationality'] ?? 'N/A'); ?></strong> • 
+                    <?php echo $text['nationality']; ?>: <strong><?php echo htmlspecialchars($user['nationality'] ?? 'N/A'); ?></strong> • 
                     Tarif: <strong><?php echo $is_senegalese ? '1,500 MRU' : '45,000 MRU'; ?></strong>
                 </div>
             </div>
@@ -328,20 +391,24 @@ $has_active_permit = ($permit && $permit['status'] === 'active');
                     
                     <h4><?php echo $text['payment_provider']; ?>:</h4>
                     <div class="providers-grid">
-                        <?php 
-                        $providers = [
-                            'bankily' => $text['bankily'],
-                            'masrivi' => $text['masrivi'],
-                            'sadad' => $text['sadad'],
-                            'click' => $text['click'],
-                            'binbank' => $text['binbank'],
-                            'moovemauritel' => $text['moovemauritel']
-                        ];
-                        foreach ($providers as $key => $name): ?>
-                        <div class="provider-option" onclick="selectProvider('<?php echo $key; ?>', '<?php echo $name; ?>', this)">
-                            <div class="provider-name"><?php echo $name; ?></div>
+                        <div class="provider-option" onclick="selectProvider('bankily', 'Bankily', this)">
+                            <div class="provider-name"><?php echo $text['bankily']; ?></div>
                         </div>
-                        <?php endforeach; ?>
+                        <div class="provider-option" onclick="selectProvider('masrivi', 'Masrivi', this)">
+                            <div class="provider-name"><?php echo $text['masrivi']; ?></div>
+                        </div>
+                        <div class="provider-option" onclick="selectProvider('sadad', 'Sadad', this)">
+                            <div class="provider-name"><?php echo $text['sadad']; ?></div>
+                        </div>
+                        <div class="provider-option" onclick="selectProvider('click', 'Click', this)">
+                            <div class="provider-name"><?php echo $text['click']; ?></div>
+                        </div>
+                        <div class="provider-option" onclick="selectProvider('binbank', 'BinBank', this)">
+                            <div class="provider-name"><?php echo $text['binbank']; ?></div>
+                        </div>
+                        <div class="provider-option" onclick="selectProvider('moovemauritel', 'Moove/Mauritel', this)">
+                            <div class="provider-name"><?php echo $text['moovemauritel']; ?></div>
+                        </div>
                     </div>
                     
                     <div class="selected-provider" id="selectedProviderInfo" style="display: none;">
@@ -349,7 +416,7 @@ $has_active_permit = ($permit && $permit['status'] === 'active');
                         <p><strong>Numéro à composer:</strong> <span id="providerNumber" class="provider-number">+222 XX XX XX XX</span></p>
                     </div>
                     
-                    <form method="POST" enctype="multipart/form-data" id="receiptUploadForm">
+                    <form id="receiptUploadForm">
                         <input type="hidden" name="transaction_id" id="paymentTransactionId" value="TRX-<?php echo time(); ?>">
                         <input type="hidden" name="payment_provider" id="selectedProvider" value="">
                         
@@ -364,24 +431,7 @@ $has_active_permit = ($permit && $permit['status'] === 'active');
                             </ol>
                         </div>
                         
-                        <div class="receipt-upload">
-                            <div class="file-upload-area">
-                                <input type="file" name="receipt_file" id="receiptFile" accept=".jpg,.jpeg,.png,.pdf" required>
-                                <label for="receiptFile" class="file-label">
-                                    <div class="upload-text">Cliquez pour télécharger le reçu</div>
-                                    <div class="file-size">JPG, PNG, PDF (max 5MB)</div>
-                                </label>
-                                <div id="fileName" class="file-name-display"></div>
-                            </div>
-                        </div>
-                        
-                        <div class="payment-notes">
-                            <p><strong><?php echo $text['payment_notes']; ?></strong></p>
-                            <p><?php echo $text['note_1']; ?></p>
-                            <p><?php echo $text['note_2']; ?></p>
-                        </div>
-                        
-                        <button type="submit" class="btn-upload-receipt">
+                        <button type="button" onclick="completePayment()" class="btn-upload-receipt">
                             📤 <?php echo $text['submit_receipt']; ?>
                         </button>
                     </form>
@@ -391,5 +441,54 @@ $has_active_permit = ($permit && $permit['status'] === 'active');
     </div>
     
     <script src="noncitizen_dashboard.js"></script>
+    <script>
+    function openPaymentModal() {
+        document.getElementById('paymentModal').style.display = 'block';
+        const transactionId = 'TRX-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+        document.getElementById('displayTransactionId').textContent = transactionId;
+        document.getElementById('instructionTransactionId').textContent = transactionId;
+        document.getElementById('paymentTransactionId').value = transactionId;
+    }
+    
+    function closePaymentModal() {
+        document.getElementById('paymentModal').style.display = 'none';
+        document.getElementById('selectedProviderInfo').style.display = 'none';
+        document.getElementById('selectedProvider').value = '';
+        document.querySelectorAll('.provider-option').forEach(el => {
+            el.classList.remove('selected');
+        });
+    }
+    
+    function selectProvider(provider, name, element) {
+        document.querySelectorAll('.provider-option').forEach(el => {
+            el.classList.remove('selected');
+        });
+        element.classList.add('selected');
+        document.getElementById('selectedProvider').value = provider;
+        document.getElementById('selectedProviderName').textContent = name;
+        document.getElementById('providerNumber').textContent = '+222 48305130';
+        document.getElementById('selectedProviderInfo').style.display = 'block';
+    }
+    
+    function completePayment() {
+        const provider = document.getElementById('selectedProvider').value;
+        if (!provider) {
+            alert('Veuillez sélectionner un opérateur de paiement.');
+            return;
+        }
+        alert('Paiement simulé avec succès via ' + provider + '!');
+        closePaymentModal();
+    }
+    
+    function uploadDocuments() {
+        alert('Fonctionnalité de téléchargement de documents!');
+    }
+    
+    window.onclick = function(event) {
+        if (event.target == document.getElementById('paymentModal')) {
+            closePaymentModal();
+        }
+    }
+    </script>
 </body>
 </html>
